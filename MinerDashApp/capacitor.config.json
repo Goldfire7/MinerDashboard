@@ -4,10 +4,6 @@
   "webDir": "dist",
   "android": {
     "allowMixedContent": true,
-    "webContentsDebuggingEnabled": false,
     "backgroundColor": "#0d1117"
-  },
-  "server": {
-    "hostname": "MinerDashApp"
   }
 }
