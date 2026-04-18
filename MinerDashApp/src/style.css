@@ -117,6 +117,34 @@ body {
 .coin-name { font-size: 10px; color: var(--text2); font-weight: 600; }
 .coin-ticker { font-size: 9px; color: var(--text3); text-transform: uppercase; }
 
+/* Pool grid */
+.pool-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.pool-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s;
+  color: var(--text);
+  min-width: 72px;
+}
+.pool-btn:hover { border-color: var(--blue); background: rgba(88,166,255,0.05); }
+.pool-btn.active { border-color: var(--blue); background: rgba(88,166,255,0.1); }
+.pool-icon { font-size: 14px; font-weight: 800; color: var(--text2); }
+.pool-label { font-size: 11px; color: var(--text2); font-weight: 600; }
+
+
+
 /* Miner count */
 .miner-count-row {
   display: flex;

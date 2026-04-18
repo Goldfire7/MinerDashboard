@@ -31,10 +31,29 @@
           </div>
         </div>
 
+        <!-- Pool selector -->
         <div class="field">
+          <label>Select Pool</label>
+          <div class="pool-grid">
+            <button
+              v-for="pk in availablePools"
+              :key="pk"
+              class="pool-btn"
+              :class="{ active: config.pool === pk }"
+              @click="selectPool(pk)"
+              type="button"
+            >
+              <span class="pool-icon">{{ getPoolIcon(pk) }}</span>
+              <span class="pool-label">{{ getPoolLabel(pk) }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Custom pool URL (shown when pool = custom) -->
+        <div class="field" v-if="config.pool === 'custom'">
           <label>Pool URL</label>
-          <input v-model="config.poolUrl" :placeholder="poolPlaceholder" />
-          <span class="hint">{{ poolHint }}</span>
+          <input v-model="config.poolUrl" placeholder="https://pool.example.com" />
+          <span class="hint">Enter your pool's homepage URL</span>
         </div>
 
         <div class="field">
@@ -77,11 +96,10 @@
         <h2>Step 3: Confirm</h2>
         <div class="confirm-box">
           <div class="confirm-item">
-            <span>Coin</span>
-            {{ coinName }} ({{ config.coin }})
+            <span>Coin</span> {{ coinName }} ({{ config.coin }})
           </div>
           <div class="confirm-item">
-            <span>Pool</span> {{ config.poolUrl }}
+            <span>Pool</span> {{ poolDisplayName }}
           </div>
           <div class="confirm-item">
             <span>Wallet</span>
@@ -225,134 +243,93 @@ import './style.css'
 
 const STORAGE_KEY = 'miner_dash_config'
 
-const COINS = [
-  {
-    ticker: 'CKB',
-    name: 'Nervos CKB',
-    icon: '🔴',
-    poolUrl: 'https://ckb.2miners.com',
-    explorerUrl: 'https://explorer.nervos.org',
-    walletHint: 'ckb1qy...',
-    poolHint: 'Pool homepage URL'
+const POOLS = {
+  '2miners': {
+    label: '2miners',
+    icon: '2M',
+    hint: '2miners pool'
   },
-  {
-    ticker: 'DOGE',
-    name: 'Dogecoin',
-    icon: '🐕',
-    poolUrl: 'https://doge.2miners.com',
-    explorerUrl: 'https://dogechain.info',
-    walletHint: 'D7SS...',
-    poolHint: 'Pool homepage URL'
+  'f2pool': {
+    label: 'F2Pool',
+    icon: 'F2',
+    hint: 'F2Pool (fishpool)'
   },
-  {
-    ticker: 'LTC',
-    name: 'Litecoin',
-    icon: ' LTC',
-    poolUrl: 'https://ltc.2miners.com',
-    explorerUrl: 'https://blockchair.com/litecoin',
-    walletHint: 'LTC...',
-    poolHint: 'Pool homepage URL'
-  },
-  {
-    ticker: 'ETH',
-    name: 'Ethereum',
-    icon: 'Ξ',
-    poolUrl: 'https://ethermine.org',
-    explorerUrl: 'https://etherscan.io',
-    walletHint: '0x...',
-    poolHint: 'Pool homepage URL'
-  },
-  {
-    ticker: 'ETC',
-    name: 'Ethereum Classic',
-    icon: 'Ξ',
-    poolUrl: 'https://etc.ethermine.org',
-    explorerUrl: 'https://blockscout.com/etc/mainnet',
-    walletHint: '0x...',
-    poolHint: 'Pool homepage URL'
-  },
-  {
-    ticker: 'RVN',
-    name: 'Ravencoin',
-    icon: '🌲',
-    poolUrl: 'https://rvn.2miners.com',
-    explorerUrl: 'https://blockchair.com/ravencoin',
-    walletHint: 'RN...',
-    poolHint: 'Pool homepage URL'
-  },
-  {
-    ticker: 'CFX',
-    name: 'Conflux',
-    icon: 'CFX',
-    poolUrl: 'https://cfx.2miners.com',
-    explorerUrl: 'https://confluxscan.io',
-    walletHint: 'cfx:...',
-    poolHint: 'Pool homepage URL'
-  },
-  {
-    ticker: 'ALPH',
-    name: 'Alephium',
-    icon: 'α',
-    poolUrl: 'https://alephium.2miners.com',
-    explorerUrl: 'https://explorer.alephium.org',
-    walletHint: '...',
-    poolHint: 'Pool homepage URL'
-  },
-  {
-    ticker: 'SIA',
-    name: 'Sia',
-    icon: '◇',
-    poolUrl: 'https://sia.2miners.com',
-    explorerUrl: 'https://siastats.info',
-    walletHint: '...',
-    poolHint: 'Pool homepage URL'
-  },
-  {
-    ticker: 'CTXC',
-    name: 'Cortex',
-    icon: '█',
-    poolUrl: 'https://ctxc.2miners.com',
-    explorerUrl: 'https://explorer.cortexlabs.ai',
-    walletHint: '0x...',
-    poolHint: 'Pool homepage URL'
-  },
-  {
-    ticker: 'KAS',
-    name: 'Kaspa',
-    icon: 'K',
-    poolUrl: 'https://kas.2miners.com',
-    explorerUrl: 'https://explorer.kaspa.org',
-    walletHint: 'kaspa:...',
-    poolHint: 'Pool homepage URL'
-  },
-  {
-    ticker: 'SOL',
-    name: 'Solana',
-    icon: '◎',
-    poolUrl: 'https://sol.2miners.com',
-    explorerUrl: 'https://explorer.solana.com',
-    walletHint: '...',
-    poolHint: 'Pool homepage URL'
-  },
-  {
-    ticker: 'RARE',
-    name: 'Aleo',
-    icon: 'λ',
-    poolUrl: 'https://ale.2miners.com',
-    explorerUrl: 'https://explorer.aleo.org',
-    walletHint: '...',
-    poolHint: 'Pool homepage URL'
-  },
-  {
-    ticker: 'CUSTOM',
-    name: 'Custom Coin',
-    icon: '⚙️',
-    poolUrl: '',
-    explorerUrl: '',
-    walletHint: 'Your wallet address',
-    poolHint: 'Pool homepage URL'
+  'custom': {
+    label: 'Custom',
+    icon: '⚙',
+    hint: 'Enter any pool URL'
   }
-]
+}
+
+const COIN_POOLS = {
+  CKB:    ['2miners', 'f2pool', 'custom'],
+  DOGE:   ['2miners', 'f2pool', 'custom'],
+  LTC:    ['2miners', 'f2pool', 'custom'],
+  ETH:    ['2miners', 'f2pool', 'custom'],
+  ETC:    ['2miners', 'f2pool', 'custom'],
+  RVN:    ['2miners', 'f2pool', 'custom'],
+  CFX:    ['2miners', 'f2pool', 'custom'],
+  ALPH:   ['2miners', 'f2pool', 'custom'],
+  SIA:    ['2miners', 'f2pool', 'custom'],
+  CTXC:   ['2miners', 'custom'],
+  KAS:    ['2miners', 'f2pool', 'custom'],
+  SOL:    ['2miners', 'f2pool', 'custom'],
+  RARE:   ['2miners', 'custom'],
+  CUSTOM: ['custom']
+}
+
+const COIN_DATA = {
+  CKB:    { name: 'Nervos CKB',   icon: '🔴', explorerUrl: 'https://explorer.nervos.org' },
+  DOGE:   { name: 'Dogecoin',     icon: '🐕', explorerUrl: 'https://dogechain.info' },
+  LTC:    { name: 'Litecoin',     icon: ' LTC', explorerUrl: 'https://blockchair.com/litecoin' },
+  ETH:    { name: 'Ethereum',     icon: 'Ξ',    explorerUrl: 'https://etherscan.io' },
+  ETC:    { name: 'Ethereum Classic', icon: 'Ξ', explorerUrl: 'https://blockscout.com/etc/mainnet' },
+  RVN:    { name: 'Ravencoin',    icon: '🌲', explorerUrl: 'https://blockchair.com/ravencoin' },
+  CFX:    { name: 'Conflux',      icon: 'CFX', explorerUrl: 'https://confluxscan.io' },
+  ALPH:   { name: 'Alephium',     icon: 'α',    explorerUrl: 'https://explorer.alephium.org' },
+  SIA:    { name: 'Sia',          icon: '◇',   explorerUrl: 'https://siastats.info' },
+  CTXC:   { name: 'Cortex',       icon: '█',    explorerUrl: 'https://explorer.cortexlabs.ai' },
+  KAS:    { name: 'Kaspa',        icon: 'K',    explorerUrl: 'https://explorer.kaspa.org' },
+  SOL:    { name: 'Solana',       icon: '◎',    explorerUrl: 'https://explorer.solana.com' },
+  RARE:   { name: 'Aleo',         icon: 'λ',    explorerUrl: 'https://explorer.aleo.org' },
+  CUSTOM: { name: 'Custom Coin',   icon: '⚙️', explorerUrl: '' }
+}
+
+const POOL_URLS = {
+  'ckb.2miners.com':     'https://ckb.2miners.com',
+  'doge.2miners.com':    'https://doge.2miners.com',
+  'ltc.2miners.com':     'https://ltc.2miners.com',
+  'ethermine.org':       'https://ethermine.org',
+  'etc.ethermine.org':   'https://etc.ethermine.org',
+  'rvn.2miners.com':     'https://rvn.2miners.com',
+  'cfx.2miners.com':     'https://cfx.2miners.com',
+  'alephium.2miners.com':'https://alephium.2miners.com',
+  'sia.2miners.com':     'https://sia.2miners.com',
+  'ctxc.2miners.com':   'https://ctxc.2miners.com',
+  'kas.2miners.com':     'https://kas.2miners.com',
+  'sol.2miners.com':     'https://sol.2miners.com',
+  'ale.2miners.com':     'https://ale.2miners.com',
+  'ckb.f2pool.com':      'https://ckb.f2pool.com',
+  'doge.f2pool.com':     'https://doge.f2pool.com',
+  'ltc.f2pool.com':      'https://ltc.f2pool.com',
+  'eth.f2pool.com':      'https://eth.f2pool.com',
+  'etc.f2pool.com':      'https://etc.f2pool.com',
+  'rvn.f2pool.com':      'https://rvn.f2pool.com',
+  'cfx.f2pool.com':      'https://cfx.f2pool.com',
+  'kas.f2pool.com':      'https://kas.f2pool.com',
+  'sol.f2pool.com':      'https://sol.f2pool.com',
+}
+
+function buildPoolUrl(coin, pool) {
+  if (pool === 'custom') return ''
+  const key = `${coin.toLowerCase()}.${pool}.com`
+  return POOL_URLS[key] || ''
+}
+
+function getPoolLabel(poolKey) {
+  const p = POOLS[poolKey]
+  return p ? p.label : poolKey
+}
 
 function makeMiners(count) {
   return Array.from({ length: count }, (_, i) => ({ name: `Miner ${i + 1}`, ip: '' }))
@@ -361,6 +338,7 @@ function makeMiners(count) {
 function defaultConfig() {
   return {
     coin: 'CKB',
+    pool: '2miners',
     poolUrl: 'https://ckb.2miners.com',
     explorerUrl: 'https://explorer.nervos.org',
     wallet: '',
@@ -368,6 +346,10 @@ function defaultConfig() {
     minerCount: 4,
     miners: makeMiners(4)
   }
+}
+
+function getAvailablePools(coin) {
+  return COIN_POOLS[coin] || ['custom']
 }
 
 export default {
@@ -381,7 +363,13 @@ export default {
     return {
       isConfigured: false,
       step: 1,
-      coins: COINS,
+      coins: Object.keys(COIN_DATA).map(ticker => ({
+        ticker,
+        name: COIN_DATA[ticker].name,
+        icon: COIN_DATA[ticker].icon,
+        explorerUrl: COIN_DATA[ticker].explorerUrl
+      })),
+      pools: Object.keys(POOLS),
       config: defaultConfig(),
       minerData: [],
       poolData: {},
@@ -401,14 +389,23 @@ export default {
     coinName() {
       return this.coins.find(c => c.ticker === this.config.coin)?.name || this.config.coin
     },
-    poolPlaceholder() {
-      return this.coins.find(c => c.ticker === this.config.coin)?.poolUrl || 'https://pool.example.com'
+    availablePools() {
+      return getAvailablePools(this.config.coin)
     },
-    poolHint() {
-      return this.coins.find(c => c.ticker === this.config.coin)?.poolHint || 'Pool homepage URL'
+    poolDisplayName() {
+      if (this.config.pool === 'custom') return this.config.poolUrl || 'Custom'
+      return getPoolLabel(this.config.pool) + ' (' + this.config.poolUrl + ')'
     },
     walletPlaceholder() {
-      return this.coins.find(c => c.ticker === this.config.coin)?.walletHint || 'Your wallet address'
+      const coinData = COIN_DATA[this.config.coin]
+      if (!coinData) return 'Your wallet address'
+      if (this.config.coin === 'CKB') return 'ckb1qy...'
+      if (this.config.coin === 'DOGE') return 'D7SS...'
+      if (this.config.coin === 'LTC') return 'LTC...'
+      if (this.config.coin === 'ETH' || this.config.coin === 'ETC' || this.config.coin === 'CTXC') return '0x...'
+      if (this.config.coin === 'KAS') return 'kaspa:...'
+      if (this.config.coin === 'CFX') return 'cfx:...'
+      return 'Your wallet address'
     },
     walletHint() {
       return 'Your ' + (this.config.coin === 'CUSTOM' ? 'coin' : this.config.coin) + ' wallet address'
@@ -420,9 +417,12 @@ export default {
     if (saved) {
       try {
         const cfg = JSON.parse(saved)
-        // Upgrade legacy config (no minerCount)
+        // Upgrade legacy config (no minerCount, no pool)
         if (cfg.minerCount === undefined) {
           cfg.minerCount = cfg.miners?.length || 4
+        }
+        if (!cfg.pool) {
+          cfg.pool = '2miners'
         }
         this.config = cfg
         this.isConfigured = true
@@ -438,8 +438,16 @@ export default {
   methods: {
     selectCoin(coin) {
       this.config.coin = coin.ticker
-      this.config.poolUrl = coin.poolUrl
       this.config.explorerUrl = coin.explorerUrl
+      // Set default pool for this coin
+      const pools = getAvailablePools(coin.ticker)
+      this.config.pool = pools[0]
+      this.config.poolUrl = buildPoolUrl(coin.ticker, pools[0])
+    },
+
+    selectPool(poolKey) {
+      this.config.pool = poolKey
+      this.config.poolUrl = buildPoolUrl(this.config.coin, poolKey)
     },
 
     changeMinerCount(delta) {
@@ -455,12 +463,12 @@ export default {
 
     nextStep() {
       if (this.step === 1) {
-        if (!this.config.poolUrl) {
-          alert('Please enter a pool URL')
-          return
-        }
         if (!this.config.wallet) {
           alert('Please enter your wallet address')
+          return
+        }
+        if (this.config.pool === 'custom' && !this.config.poolUrl) {
+          alert('Please enter your pool URL')
           return
         }
       }
@@ -532,6 +540,14 @@ export default {
       const h = Math.floor(seconds / 3600)
       const m = Math.floor((seconds % 3600) / 60)
       return h > 0 ? `${h}h ${m}m` : `${m}m`
+    },
+
+    getPoolIcon(pk) {
+      return POOLS[pk]?.icon || '⚙'
+    },
+
+    getPoolLabel(pk) {
+      return POOLS[pk]?.label || pk
     }
   }
 }
