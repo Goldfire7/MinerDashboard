@@ -88,8 +88,67 @@ body {
   padding: 10px 12px;
 }
 .miner-name { font-size: 13px; font-weight: 600; color: var(--blue); min-width: 80px; }
-.miner-entry input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: var(--text); font-size: 13px; outline: none; }
-.miner-entry input:focus { border-color: var(--blue); }
+.miner-name-input { font-size: 13px; font-weight: 600; color: var(--blue); min-width: 80px; background: transparent; border: none; outline: none; padding: 0; }
+.arrow { color: var(--text3); font-size: 12px; flex-shrink: 0; }
+
+/* Coin grid */
+.coin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.coin-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s;
+  color: var(--text);
+}
+.coin-btn:hover { border-color: var(--blue); background: rgba(88,166,255,0.05); }
+.coin-btn.active { border-color: var(--blue); background: rgba(88,166,255,0.1); }
+.coin-icon { font-size: 20px; }
+.coin-name { font-size: 10px; color: var(--text2); font-weight: 600; }
+.coin-ticker { font-size: 9px; color: var(--text3); text-transform: uppercase; }
+
+/* Miner count */
+.miner-count-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.count-btn {
+  width: 40px;
+  height: 40px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.count-btn:hover { border-color: var(--blue); color: var(--blue); }
+.count-display { font-size: 24px; font-weight: 700; color: var(--green); min-width: 30px; text-align: center; }
+
+/* Confirm wallet short */
+.wallet-short { font-family: monospace; font-size: 11px; color: var(--text3); word-break: break-all; }
+.miner-confirm { font-size: 12px; color: var(--text3); padding-left: 10px; }
+
+/* Miner name row in card */
+.miner-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+.online-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
+.online-dot.on { background: var(--green); }
+
 
 /* Confirm */
 .confirm-box { background: var(--bg3); border-radius: var(--radius-sm); padding: 16px; }
