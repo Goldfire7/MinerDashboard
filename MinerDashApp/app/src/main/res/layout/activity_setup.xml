@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:gravity="center_horizontal">
+
+        <!-- Logo / Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⛏️ Miner Dash"
+            android:textColor="@color/colorPrimary"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:layout_marginTop="32dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Connect to your dashboard"
+            android:textColor="@color/textSecondary"
+            android:textSize="14sp"
+            android:layout_marginBottom="32dp" />
+
+        <!-- Server URL -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Dashboard URL"
+            android:textColor="@color/textSecondary"
+            android:textSize="12sp"
+            android:textAllCaps="true"
+            android:layout_marginBottom="6dp" />
+
+        <EditText
+            android:id="@+id/editServerUrl"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@drawable/edit_bg"
+            android:padding="12dp"
+            android:textColor="@color/textPrimary"
+            android:textColorHint="@color/textSecondary"
+            android:textSize="14sp"
+            android:hint="https://your-dashboard.com"
+            android:inputType="textUri"
+            android:singleLine="true" />
+
+        <!-- Wallet -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Pool Wallet Address"
+            android:textColor="@color/textSecondary"
+            android:textSize="12sp"
+            android:textAllCaps="true"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="6dp" />
+
+        <EditText
+            android:id="@+id/editWallet"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@drawable/edit_bg"
+            android:padding="12dp"
+            android:textColor="@color/textPrimary"
+            android:textColorHint="@color/textSecondary"
+            android:textSize="14sp"
+            android:hint="ckb1qy..."
+            android:inputType="text"
+            android:singleLine="true" />
+
+        <!-- Coin selector -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Coin"
+            android:textColor="@color/textSecondary"
+            android:textSize="12sp"
+            android:textAllCaps="true"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="6dp" />
+
+        <Spinner
+            android:id="@+id/spinnerCoin"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@drawable/edit_bg"
+            android:padding="12dp"
+            android:popupBackground="@color/surface" />
+
+        <!-- Status message -->
+        <TextView
+            android:id="@+id/textStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/accentRed"
+            android:textSize="13sp"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            android:gravity="center" />
+
+        <!-- Connect button -->
+        <Button
+            android:id="@+id/btnConnect"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="Connect"
+            android:textColor="#0d1117"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:background="@drawable/btn_primary"
+            android:layout_marginTop="28dp" />
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:visibility="gone"
+            android:indeterminateTint="@color/colorPrimary" />
+
+    </LinearLayout>
+</ScrollView>

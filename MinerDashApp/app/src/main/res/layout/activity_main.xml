@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <WebView
+        android:id="@+id/webView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Loading overlay -->
+    <LinearLayout
+        android:id="@+id/loadingOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/background"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⛏️ Miner Dash"
+            android:textColor="@color/colorPrimary"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <ProgressBar
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginTop="20dp"
+            android:indeterminateTint="@color/colorPrimary" />
+
+        <TextView
+            android:id="@+id/textLoading"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Connecting..."
+            android:textColor="@color/textSecondary"
+            android:textSize="13sp"
+            android:layout_marginTop="12dp" />
+
+    </LinearLayout>
+
+</FrameLayout>
