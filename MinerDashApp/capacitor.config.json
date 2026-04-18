@@ -1,5 +1,13 @@
 {
   "appId": "com.ckbox.miner",
   "appName": "MinerDashApp",
-  "webDir": "dist"
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true,
+    "webContentsDebuggingEnabled": false,
+    "backgroundColor": "#0d1117"
+  },
+  "server": {
+    "hostname": "MinerDashApp"
+  }
 }
