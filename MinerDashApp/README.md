@@ -1,51 +1,64 @@
 # MinerDash App
 
-Mobile APK for monitoring your Goldshell CK-Box miners.
+Monitor your mining rigs from your phone. Works with any coin.
 
-## First-Launch Setup Wizard
+## Supported Coins
 
-On first launch, the app guides you through 3 steps:
+| Coin | Pool Preset |
+|------|-------------|
+| 🔴 Nervos CKB | 2miners |
+| 🐕 Dogecoin | 2miners |
+| LTC Litecoin | 2miners |
+| Ξ Ethereum | Ethermine |
+| Ξ Ethereum Classic | 2miners |
+| 🌲 Ravencoin | 2miners |
+| CFX Conflux | 2miners |
+| α Alephium | 2miners |
+| ◇ Sia | 2miners |
+| █ Cortex | 2miners |
+| K Kaspa | 2miners |
+| ◎ Solana | 2miners |
+| λ Aleo | 2miners |
+| ⚙️ Custom | Any URL |
 
-1. **Pool Settings** — pool URL + CKB wallet address
-2. **Server / Miner IPs** — your MinerMonitor server URL + individual miner IPs
+## First-Launch Wizard
+
+1. **Pick your coin** — tap a preset or Custom for any coin
+2. **Server & Miners** — enter MinerMonitor server IP + miner names/IPs (1–50)
 3. **Confirm** — review and launch
 
-Settings are saved locally on the device and synced to your Flask backend.
+Settings saved locally and synced to your Flask backend.
 
 ## Architecture
 
 ```
-┌─────────────────┐         ┌──────────────────────────────┐
-│  Mobile APK     │ ──────► │  MinerMonitor Flask Server   │
-│  (Vue + Capacitor)         │  (your current dashboard)   │
-│  MinerDash-v1   │ ◄────── │  polling miners + 2miners   │
-└─────────────────┘   API   └──────────────────────────────┘
+Mobile APK ←──fetch──→ MinerMonitor Flask Server ←──polls──→ ASIC miners
+                            ↕
+                      Pool API (2miners, etc.)
 ```
 
-The APK does **not** poll miners directly — it talks to your existing Flask backend (`http://YOUR_SERVER:5000`).
+The APK talks to your Flask backend (`http://YOUR_SERVER:5000`), not directly to miners.
 
 ## APK Location
 
 ```
-MinerDashApp/MinerDash-v1.0.0.apk
+MinerDashApp/MinerDash-v1.0.0.apk  (3.7MB)
 ```
-
-Install on Android device, enter your server IP (e.g. `http://192.168.0.x:5000`), done.
 
 ## MinerMonitor Server
 
-Your Flask server must be running for the app to work:
+Your Flask server must be running:
 
 ```bash
 cd ~/.openclaw/workspace/MinerDashboard
 python3 miner_monitor.py
 ```
 
-The app syncs miner IPs to the backend via `PUT /api/miners`.
+Miner IPs and wallet are synced to the backend via `PUT /api/miners`.
 
 ## Rebuild APK
 
-Requires Android SDK:
+Requires Android SDK at `/home/dalton/android-sdk`:
 
 ```bash
 cd MinerDashApp
