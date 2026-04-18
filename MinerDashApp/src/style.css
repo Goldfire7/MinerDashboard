@@ -339,6 +339,60 @@ header {
 .block-row.orphan { opacity: 0.5; }
 .empty { padding: 20px; text-align: center; color: var(--text2); font-size: 13px; }
 
+/* Connecting screen */
+.connecting-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 100;
+}
+.connecting-spinner {
+  font-size: 48px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+.connecting-text {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+}
+.connecting-url {
+  color: var(--text3);
+  font-size: 12px;
+  font-family: monospace;
+}
+
+/* Error banner */
+.error-banner {
+  background: rgba(248, 81, 73, 0.15);
+  border-bottom: 1px solid var(--red);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--red);
+}
+.retry-btn {
+  background: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 /* Mobile scroll helpers */
 @media (max-width: 600px) {
   header { grid-template-columns: 1fr 1fr; }
