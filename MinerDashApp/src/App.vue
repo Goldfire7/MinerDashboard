@@ -134,21 +134,11 @@
     <!-- ═══════════════ DASHBOARD ═══════════════ -->
     <div v-else class="dashboard">
 
-      <!-- Connecting overlay -->
-      <div v-if="connecting" class="connecting-screen">
-        <div class="connecting-spinner">⚡</div>
-        <div class="connecting-text">Connecting to MinerMonitor...</div>
-        <div class="connecting-url">{{ config.serverUrl }}</div>
-      </div>
-
-      <!-- Error banner -->
-      <div v-if="connectionError && !connecting" class="error-banner">
-        <span>⚠️ Could not reach server at {{ config.serverUrl }}</span>
+      <!-- Error banner (only after first poll failed) -->
+      <div v-if="connectionError" class="error-banner">
+        <span>⚠️ Could not reach {{ config.serverUrl }}</span>
         <button @click="retryPoll" class="retry-btn">↻ Retry</button>
       </div>
-
-      <!-- Main content (hide while connecting) -->
-      <div v-if="!connecting" class="dashboard-content">
 
       <header>
         <div class="header-left">
@@ -249,7 +239,6 @@
             </span>
           </div>
         </div>
-      </div>
       </div>
     </div>
   </div>
@@ -391,7 +380,6 @@ export default {
       minerData: [],
       poolData: {},
       blocks: [],
-      connecting: true,
       connectionError: false,
       pollInterval: null
     }
@@ -521,7 +509,6 @@ export default {
 
     startPolling() {
       if (this.pollInterval) clearInterval(this.pollInterval)
-      this.connecting = true
       this.poll()
       this.pollInterval = setInterval(() => this.poll(), 5000)
     },
@@ -536,18 +523,15 @@ export default {
         const blocksR = await fetch(`${this.config.serverUrl}/api/blocks`)
         const blocksData = await blocksR.json()
         this.blocks = blocksData.immature || []
-        this.connecting = false
         this.connectionError = false
       } catch (e) {
         console.warn('Poll failed:', e)
-        this.connecting = false
         this.connectionError = true
       }
     },
 
     retryPoll() {
       this.connectionError = false
-      this.connecting = true
       this.poll()
     },
 
