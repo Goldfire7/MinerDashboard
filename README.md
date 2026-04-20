@@ -65,18 +65,78 @@ Open [http://localhost:5000](http://localhost:5000)
 
 ### Remote Access
 
-To access your dashboard from outside your home network, use [Tailscale Funnel](https://tailscale.com/funnel):
+To access your dashboard from outside your home network, the easiest way is **Tailscale Funnel**. It exposes your local dashboard to the internet via HTTPS — no router config, no port forwarding, no cloud server needed.
+
+#### How Tailscale Funnel Works
+
+Tailscale creates a private encrypted network between your devices. Funnel then lets you share one device (your dashboard host) with the outside world via a public HTTPS URL.
+
+#### Step-by-Step Setup
+
+**1. Install Tailscale**
+
+Download and install Tailscale on the machine running the dashboard:
 
 ```bash
-# Install Tailscale and authenticate
+# Linux (Ubuntu/Debian)
+curl -fsSL https://tailscale.com/install.sh | sh
+
+# macOS
+brew install tailscale
+
+# Or download from https://tailscale.com/download
+```
+
+**2. Authenticate**
+
+```bash
 tailscale up
+```
 
-# Enable funnel — exposes port 5000 publicly via HTTPS
+This opens a browser for one-time login. After authenticating, your machine is on your private Tailnet.
+
+**3. Start the Dashboard**
+
+Make sure the dashboard is running:
+
+```bash
+cd /path/to/MinerDashboard
+python3 miner_monitor.py
+```
+
+**4. Enable Funnel**
+
+```bash
 tailscale funnel 5000
+```
 
-# Check the public URL
+This tells Tailscale to accept web traffic on port 5000 and serve it publicly. You'll see a confirmation with your public URL.
+
+**5. Get Your Public URL**
+
+```bash
 tailscale funnel status
 ```
+
+Look for the `https://` URL — that's your dashboard accessible from anywhere.
+
+#### Testing It Works
+
+- Open the public URL in your browser
+- If you see the dashboard — it's working
+- If not, check that port 5000 isn't blocked by a firewall on your machine
+
+#### Keeping It Running
+
+Tailscale Funnel stops if your machine reboots. To auto-start on boot, you can set up a systemd service. See the [Tailscale docs](https://tailscale.com/kb/1280/faq/#how-do-i-auto-start-tailscale-on-linux) for your setup.
+
+#### Other Remote Access Options
+
+If you prefer not to use Tailscale:
+
+- **Reverse proxy** (nginx/Caddy) + **Cloudflare Tunnel** or **ngrok**
+- **Port forwarding** on your router (requires router access)
+- **WireGuard** VPN (similar concept to Tailscale but manual config)
 
 ## Configuration
 
