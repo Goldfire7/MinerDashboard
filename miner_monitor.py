@@ -64,6 +64,9 @@ def save_config():
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=2)
 
+# Initialize config on module load (needed for gunicorn/WSGI)
+load_config()
+
 
 def load_earnings_history():
     """Load persisted earnings history."""
