@@ -108,34 +108,20 @@ Each miner entry needs:
 | `POLL_INTERVAL` | Overrides poll interval |
 | `PORT` | Web server port (default `5000`) |
 
-## Cloud Deployment
-
-### Render (Free Tier)
-
-1. Fork this repo
-2. Create a new **Blueprint** on [Render](https://render.com)
-3. Connect your GitHub repo
-4. Add environment variable: `WALLET_ADDRESS`
-5. Deploy
-
-Render auto-detects the `render.yaml` file.
-
-> **Note:** On Render's free tier, miners must be reachable from Render's servers. For local miners, you'll need Tailscale or another VPN to expose your network.
-
 ## Project Structure
 
 ```
 MinerDashboard/
 ├── miner_monitor.py      # Main Flask app + polling logic
 ├── config.json           # User configuration (gitignored)
+├── config.example.json   # Example configuration
 ├── requirements.txt     # Python dependencies
-├── render.yaml           # Render deployment config
-├── templates/            # HTML templates
+├── templates/           # HTML templates
 │   ├── dashboard.html
 │   ├── blocks.html
 │   ├── payments.html
 │   └── ...
-└── data/                 # Runtime data (gitignored)
+└── data/                # Runtime data (gitignored)
     ├── hashrate_history.json
     ├── earnings_history.json
     └── ...
