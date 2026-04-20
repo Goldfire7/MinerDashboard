@@ -1,0 +1,11 @@
+{
+  "wallet": "ckb1qyq__________________________",
+  "miners": [
+    {"name": "CK_Box_1", "ip": "192.168.0.61"},
+    {"name": "CK_Box_2", "ip": "192.168.0.72"},
+    {"name": "CK_Box_3", "ip": "192.168.0.69"},
+    {"name": "CK_Box_4", "ip": "192.168.0.153"}
+  ],
+  "poll_interval": 5,
+  "history_points": 2880
+}
