@@ -38,7 +38,7 @@ Create a `config.json` in the project root:
 
 ```json
 {
-  "wallet": "ckb1qyqfv9d5vr7x5ss8wuv6a7pyuazwyltjgh7qdvcyqs",
+  "wallet": "ckb1qyq__________________________",
   "miners": [
     {"name": "CK_Box_1", "ip": "192.168.0.61"},
     {"name": "CK_Box_2", "ip": "192.168.0.72"}
