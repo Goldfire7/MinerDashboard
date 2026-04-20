@@ -2,7 +2,8 @@
 
 A self-hosted dashboard for monitoring Goldshell CK-Box miners via the 2miners pool API.
 
-![Dashboard](https://img.shields.io/badge/Python-3.11+-blue)
+![Dashboard](screenshot.png)
+![Python](https://img.shields.io/badge/Python-3.11+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
