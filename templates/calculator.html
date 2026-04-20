@@ -517,7 +517,7 @@
                 
                 document.getElementById('liveNetworkHashrate').textContent = formatHashrate(liveData.networkHashrate);
                 document.getElementById('liveBlockReward').textContent = liveData.blockReward.toLocaleString() + ' CKB';
-                document.getElementById('liveCKBPrice').textContent = liveData.ckbPrice > 0 ? '$' + liveData.ckbPrice.toFixed(4) : 'N/A';
+                document.getElementById('liveCKBPrice').textContent = liveData.ckbPrice > 0 ? '$' + liveData.ckbPrice.toFixed(6) : 'N/A';
                 document.getElementById('liveDataUpdated').textContent = new Date().toLocaleTimeString();
                 
                 const netHashInput = document.getElementById('networkHashrate');
@@ -527,7 +527,7 @@
                 
                 const priceInput = document.getElementById('ckbPrice');
                 if (liveData.ckbPrice > 0) {
-                    priceInput.value = liveData.ckbPrice.toFixed(4);
+                    priceInput.value = liveData.ckbPrice.toFixed(6);
                 }
                 
                 const blockRewardInput = document.getElementById('blockReward');
