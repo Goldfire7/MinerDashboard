@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payments - CKB Miner Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #1e2433;
+            --border: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-purple: #a371f7;
+            --accent-red: #f85149;
+            --shadow: 0 4px 12px rgba(0,0,0,0.3);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1f2e 0%, var(--bg-primary) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 16px;
+            line-height: 1.5;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        h1 { 
+            color: var(--accent-green); 
+            font-size: clamp(20px, 5vw, 26px); 
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .back-link {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 10px;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid rgba(88, 166, 255, 0.2);
+            transition: all 0.2s;
+        }
+        
+        .back-link:hover {
+            background: rgba(88, 166, 255, 0.2);
+        }
+        
+        /* Summary cards */
+        .summary-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            max-width: 1200px;
+            margin: 0 auto 16px auto;
+        }
+        
+        .summary-card {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 14px 12px;
+            border: 1px solid var(--border);
+            text-align: center;
+            box-shadow: var(--shadow);
+            transition: border-color 0.2s;
+        }
+        
+        .summary-card:hover {
+            border-color: var(--accent-green);
+        }
+        
+        .summary-card .label {
+            color: var(--text-secondary);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .summary-card .value {
+            font-size: 18px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .value-green { color: var(--accent-green); }
+        .value-blue { color: var(--accent-blue); }
+        .value-yellow { color: var(--accent-yellow); }
+        .value-purple { color: var(--accent-purple); }
+        
+        .payments-container {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .payments-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        
+        .payments-title {
+            color: var(--accent-green);
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .payment-count {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(90deg, #238636, #2ea043);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        
+        .refresh-btn:hover { 
+            background: linear-gradient(90deg, #2ea043, #3fb950);
+        }
+        
+        .refresh-btn:disabled { 
+            background: var(--text-muted); 
+            cursor: not-allowed;
+        }
+        
+        /* Table wrapper for horizontal scroll */
+        .table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -4px;
+            padding: 0 4px;
+        }
+        
+        .payments-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 700px;
+        }
+        
+        .payments-table th {
+            text-align: left;
+            padding: 12px 10px;
+            color: var(--text-secondary);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .payments-table td {
+            padding: 14px 10px;
+            border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+            font-size: 14px;
+            vertical-align: middle;
+        }
+        
+        .payments-table tbody tr {
+            transition: background 0.15s;
+        }
+        
+        .payments-table tbody tr:hover td {
+            background: rgba(63, 185, 80, 0.06);
+        }
+        
+        .tx-link {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        
+        .tx-link:hover { text-decoration: underline; }
+        
+        .amount-ckb {
+            color: var(--accent-green);
+            font-weight: 700;
+        }
+        
+        .amount-usd {
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+        
+        .fee {
+            color: var(--accent-yellow);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 12px;
+        }
+        
+        .date-time {
+            color: var(--text-primary);
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        
+        .time-ago {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+        
+        .payment-number {
+            color: var(--text-muted);
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .loading { 
+            color: var(--text-secondary); 
+            text-align: center; 
+            padding: 50px 20px;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .loading::after {
+            content: '';
+            width: 28px;
+            height: 28px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .error {
+            color: var(--accent-red);
+            text-align: center;
+            padding: 50px 20px;
+            font-size: 14px;
+            background: rgba(248, 81, 73, 0.08);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(248, 81, 73, 0.2);
+        }
+        
+        .last-updated {
+            color: var(--text-muted);
+            font-size: 11px;
+            text-align: center;
+            margin-top: 16px;
+        }
+        
+        /* Mobile */
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            
+            .summary-row {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            
+            .summary-card {
+                padding: 12px 10px;
+            }
+            
+            .summary-card .value {
+                font-size: 16px;
+            }
+            
+            .summary-card .label {
+                font-size: 9px;
+            }
+            
+            .payments-container {
+                padding: 14px;
+            }
+            
+            .payments-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            
+            .header-right {
+                justify-content: space-between;
+            }
+            
+            .payments-table {
+                min-width: 620px;
+            }
+            
+            .payments-table th,
+            .payments-table td {
+                padding: 10px 8px;
+                font-size: 13px;
+            }
+            
+            .payments-table th {
+                font-size: 10px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .summary-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .summary-card .value {
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>💳 Payment History</h1>
+        <a href="/" class="back-link">← Dashboard</a>
+    </header>
+
+    <div class="summary-row" id="summaryRow">
+        <div class="summary-card">
+            <div class="label">Total Payments</div>
+            <div class="value value-green" id="totalPayments">--</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Total Paid</div>
+            <div class="value value-blue" id="totalPaid">--</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Total Fees</div>
+            <div class="value value-yellow" id="totalFees">--</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Avg Payment</div>
+            <div class="value value-purple" id="avgPayment">--</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Total Value</div>
+            <div class="value value-green" id="totalUSD">--</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Avg Days Between</div>
+            <div class="value value-blue" id="avgDays">--</div>
+        </div>
+    </div>
+    
+    <div class="payments-container">
+        <div class="payments-header">
+            <div class="payments-title">Payouts from 2Miners</div>
+            <div class="header-right">
+                <span class="payment-count" id="paymentCount"></span>
+                <button class="refresh-btn" onclick="loadPayments()" id="refreshBtn">↻ Refresh</button>
+            </div>
+        </div>
+        
+        <div id="paymentsContent">
+            <div class="loading">Loading payments...</div>
+        </div>
+        
+        <div class="last-updated" id="lastUpdated"></div>
+    </div>
+    
+    <script>
+        let ckbPrice = 0;
+
+        function toCKB(shannons) {
+            return shannons / 1e8;
+        }
+
+        function formatCKB(shannons) {
+            const ckb = toCKB(shannons);
+            if (ckb >= 1000) return ckb.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return ckb.toFixed(4);
+        }
+
+        function formatUSD(shannons) {
+            const ckb = toCKB(shannons);
+            const usd = ckb * ckbPrice;
+            if (usd >= 1) return `$${usd.toFixed(2)}`;
+            if (usd >= 0.01) return `$${usd.toFixed(3)}`;
+            return `$${usd.toFixed(4)}`;
+        }
+
+        function formatDate(timestamp) {
+            return new Date(timestamp * 1000).toLocaleDateString('en-US', {
+                year: 'numeric', month: 'short', day: 'numeric'
+            });
+        }
+
+        function formatTime(timestamp) {
+            return new Date(timestamp * 1000).toLocaleTimeString('en-US', {
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+
+        function timeAgo(timestamp) {
+            const seconds = Math.floor(Date.now() / 1000) - timestamp;
+            if (seconds < 60) return 'just now';
+            if (seconds < 3600) return Math.floor(seconds / 60) + ' min ago';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + ' hr ago';
+            const days = Math.floor(seconds / 86400);
+            if (days === 1) return '1 day ago';
+            return days + ' days ago';
+        }
+
+        function loadPayments() {
+            const btn = document.getElementById('refreshBtn');
+            const content = document.getElementById('paymentsContent');
+            
+            btn.disabled = true;
+            btn.textContent = '⟳ Loading...';
+            
+            Promise.all([
+                fetch('/api/payments').then(r => r.json()),
+                fetch('/api/status').then(r => r.json())
+            ])
+                .then(([paymentsData, statusData]) => {
+                    btn.disabled = false;
+                    btn.textContent = '↻ Refresh';
+                    
+                    ckbPrice = statusData?.pool?.ckb_price || 0;
+
+                    if (paymentsData.error) {
+                        content.innerHTML = `<div class="error">Error: ${paymentsData.error}</div>`;
+                        return;
+                    }
+                    
+                    const payments = paymentsData.payments || [];
+                    const paymentsTotal = paymentsData.paymentsTotal || payments.length;
+                    
+                    if (payments.length === 0) {
+                        content.innerHTML = `<div class="loading">No payments found</div>`;
+                        return;
+                    }
+                    
+                    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+                    const totalFees = payments.reduce((sum, p) => sum + (p.txFee || 0), 0);
+                    const avgPayment = totalPaid / payments.length;
+
+                    document.getElementById('totalPayments').textContent = paymentsTotal;
+                    document.getElementById('totalPaid').textContent = formatCKB(totalPaid);
+                    document.getElementById('totalFees').textContent = formatCKB(totalFees);
+                    document.getElementById('avgPayment').textContent = formatCKB(avgPayment);
+                    document.getElementById('paymentCount').textContent = `${payments.length} of ${paymentsTotal} payouts`;
+                    
+                    const totalUSD = toCKB(totalPaid) * ckbPrice;
+                    if (ckbPrice > 0) {
+                        document.getElementById('totalUSD').textContent = `$${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    } else {
+                        document.getElementById('totalUSD').textContent = '--';
+                    }
+                    
+                    if (payments.length >= 2) {
+                        const sorted = [...payments].sort((a, b) => a.timestamp - b.timestamp);
+                        const totalDays = (sorted[sorted.length - 1].timestamp - sorted[0].timestamp) / 86400;
+                        const avgDays = totalDays / (sorted.length - 1);
+                        document.getElementById('avgDays').textContent = avgDays.toFixed(1) + 'd';
+                    } else {
+                        document.getElementById('avgDays').textContent = 'N/A';
+                    }
+                    
+                    // Sort newest first
+                    payments.sort((a, b) => b.timestamp - a.timestamp);
+                    
+                    let html = `<div class="table-wrapper"><table class="payments-table"><thead><tr><th>#</th><th>Date</th><th>Amount</th><th>USD</th><th>Fee</th><th>Net</th><th>Tx</th></tr></thead><tbody>`;
+                    
+                    payments.forEach((p, i) => {
+                        const amountCKB = formatCKB(p.amount);
+                        const feeCKB = formatCKB(p.txFee || 0);
+                        const netCKB = toCKB(p.amount) - toCKB(p.txFee || 0);
+                        const netFormatted = netCKB >= 1000 ? netCKB.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : netCKB.toFixed(4);
+                        const usdValue = ckbPrice > 0 ? formatUSD(p.amount) : '--';
+                        const txShort = p.tx ? (p.tx.substring(0, 16) + '...') : 'N/A';
+                        const txHref = p.tx ? `https://explorer.nervos.org/transaction/${p.tx}` : '#';
+                        
+                        html += `<tr>
+                            <td class="payment-number">${i + 1}</td>
+                            <td><div class="date-time">${formatDate(p.timestamp)}</div><div class="time-ago">${timeAgo(p.timestamp)}</div></td>
+                            <td class="amount-ckb">${amountCKB}</td>
+                            <td class="amount-usd">${usdValue}</td>
+                            <td class="fee">${feeCKB}</td>
+                            <td style="color: var(--accent-blue); font-weight: 600;">${netFormatted}</td>
+                            <td>${p.tx ? `<a href="${txHref}" target="_blank" class="tx-link">${txShort}</a>` : 'N/A'}</td>
+                        </tr>`;
+                    });
+                    
+                    html += `</tbody></table></div>`;
+                    content.innerHTML = html;
+                    
+                    document.getElementById('lastUpdated').textContent = `Last updated: ${new Date().toLocaleString()}`;
+                })
+                .catch(err => {
+                    btn.disabled = false;
+                    btn.textContent = '↻ Refresh';
+                    content.innerHTML = `<div class="error">Failed to load payments</div>`;
+                    console.error(err);
+                });
+        }
+        
+        loadPayments();
+    </script>
+</body>
+</html>

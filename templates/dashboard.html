@@ -1,0 +1,2241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CK-Box Miner Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #1e2433;
+            --border: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-orange: #f0883e;
+            --accent-purple: #a371f7;
+            --shadow: 0 4px 12px rgba(0,0,0,0.3);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1f2e 0%, var(--bg-primary) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 16px;
+            line-height: 1.5;
+        }
+        
+        /* Header - New layout */
+        header {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            gap: 16px;
+        }
+        
+        .header-left {
+            justify-self: start;
+        }
+        
+        .header-center {
+            text-align: center;
+            justify-self: center;
+        }
+        
+        .header-right {
+            justify-self: end;
+        }
+        
+        /* Header Cards */
+        .header-card {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            text-align: center;
+            min-width: 140px;
+        }
+        
+        .header-card .label {
+            color: var(--text-secondary);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        
+        .header-card .links {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .header-card .links a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+        
+        .header-card .links a:hover {
+            background: rgba(88, 166, 255, 0.1);
+        }
+        
+        /* Navigation Card */
+        .nav-card {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+        
+        .nav-card .label {
+            color: var(--text-secondary);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        
+        .nav-card .links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 8px;
+            justify-content: center;
+            max-width: 280px;
+        }
+        
+        .nav-card .links a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        
+        .nav-card .links a:hover {
+            background: rgba(88, 166, 255, 0.1);
+        }
+        
+        /* Title centering */
+        .header-center h1 {
+            color: var(--accent-blue);
+            font-size: clamp(20px, 4vw, 28px);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .header-center .subtitle {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-top: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Combined Stats Grid */
+        .combined-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 16px 12px;
+            text-align: center;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            border-color: rgba(88, 166, 255, 0.3);
+        }
+        
+        .stat-card:active {
+            transform: translateY(0);
+        }
+        
+        .stat-card .label { 
+            color: var(--text-secondary); 
+            font-size: 11px; 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .stat-card .value { 
+            font-size: 20px; 
+            font-weight: 700; 
+            color: var(--accent-blue); 
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+        }
+            margin-top: 6px;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .stat-card .value .usd-amount {
+            color: var(--accent-green) !important;
+            font-size: 26px;
+            font-weight: 700;
+        }
+        
+        .stat-card .value .ckb-amount {
+            color: var(--accent-blue) !important;
+            font-size: 18px;
+        }
+        
+        .stat-card .value.good { color: var(--accent-green); }
+        .stat-card .value.warn { color: var(--accent-yellow); }
+        .stat-card .value.bad { color: var(--accent-red); }
+        .stat-card .value.secondary { color: var(--text-primary); }
+        
+        .stat-card .sub-value {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        
+        /* Shares Section */
+        .shares-section {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .section-header h3 {
+            color: var(--accent-blue);
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .shares-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+        }
+        
+        .share-stat {
+            background: var(--bg-primary);
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            text-align: center;
+            border: 1px solid transparent;
+            transition: border-color 0.2s;
+        }
+        
+        .share-stat:hover {
+            border-color: var(--border);
+        }
+        
+        .share-stat .label { 
+            color: var(--text-secondary); 
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        
+        .share-stat .value { 
+            font-size: 18px; 
+            font-weight: 700; 
+            margin-top: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .share-stat .value.good { color: var(--accent-green); }
+        .share-stat .value.warn { color: var(--accent-yellow); }
+        .share-stat .value.bad { color: var(--accent-red); }
+        
+        .share-stat .percent {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        
+        /* Payments Section */
+        .payments-section {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+        
+        .payments-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 10px;
+            max-height: 220px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        
+        .payments-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .payments-grid::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+            border-radius: 3px;
+        }
+        
+        .payments-grid::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+        
+        .payment-stat {
+            background: var(--bg-primary);
+            padding: 10px;
+            border-radius: var(--radius-sm);
+            text-align: center;
+            border-left: 3px solid transparent;
+            transition: border-color 0.2s;
+        }
+        
+        .payment-stat.immature { border-left-color: var(--accent-yellow); }
+        .payment-stat.confirmed { border-left-color: var(--accent-green); }
+        
+        .payment-stat .label { 
+            color: var(--text-secondary); 
+            font-size: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .payment-stat .value { 
+            font-size: 15px; 
+            font-weight: 600; 
+            margin-top: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .payment-stat .value.immature { color: var(--accent-yellow); }
+        .payment-stat .value.confirmed { color: var(--accent-green); }
+        
+        .payment-stat .time {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        
+        /* Miners Grid */
+        .miners-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 16px;
+        }
+        
+        .miner-card {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.3s;
+            position: relative;
+        }
+        
+        .miner-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+        }
+        
+        .miner-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            border-color: rgba(88, 166, 255, 0.25);
+        }
+        
+        .miner-card.offline { 
+            opacity: 0.75; 
+            border-color: var(--accent-red);
+        }
+        
+        .miner-card.offline .miner-header {
+            background: linear-gradient(90deg, #3d1f1f 0%, #2d1a1a 100%);
+        }
+        
+        .miner-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            background: linear-gradient(90deg, #21262d 0%, #1c2128 100%);
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .miner-name { 
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .miner-name .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+        }
+        
+        .miner-card.offline .miner-name .status-dot {
+            background: var(--accent-red);
+        }
+        
+        .miner-ip { 
+            color: var(--text-secondary); 
+            font-size: 11px; 
+            margin-top: 2px;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-badge.online { 
+            background: rgba(63, 185, 80, 0.2);
+            color: var(--accent-green);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+        }
+        
+        .status-badge.offline { 
+            background: rgba(248, 81, 73, 0.2);
+            color: var(--accent-red);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+        }
+        
+        .miner-body { padding: 14px 16px; }
+        
+        .miner-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        
+        .miner-stat {
+            background: var(--bg-primary);
+            padding: 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid transparent;
+            transition: border-color 0.2s;
+        }
+        
+        .miner-stat:hover {
+            border-color: var(--border);
+        }
+        
+        .miner-stat .label { 
+            color: var(--text-secondary); 
+            font-size: 10px;
+            white-space: nowrap;
+        }
+        
+        .miner-stat .value { 
+            font-size: 15px; 
+            font-weight: 600; 
+            margin-top: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .miner-stat .value.good { color: var(--accent-green); }
+        .miner-stat .value.warn { color: var(--accent-yellow); }
+        .miner-stat .value.bad { color: var(--accent-red); }
+        
+        .miner-stat .sub {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        
+        /* Temperature Display */
+        .temp-display {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .temp-display .temp-bar {
+            width: 40px;
+            height: 4px;
+            background: var(--bg-secondary);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .temp-display .temp-bar .fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+        
+        .temp-display .temp-bar .fill.good { background: var(--accent-green); }
+        .temp-display .temp-bar .fill.warn { background: var(--accent-yellow); }
+        .temp-display .temp-bar .fill.bad { background: var(--accent-red); }
+        
+        /* Pool Section */
+        .pool-section {
+            background: var(--bg-primary);
+            border-radius: var(--radius-sm);
+            padding: 10px;
+            margin-top: 12px;
+        }
+        
+        .pool-section .label { 
+            color: var(--text-secondary); 
+            font-size: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .pool-section .pool-url { 
+            color: var(--accent-blue); 
+            font-size: 12px;
+            word-break: break-all;
+            margin-top: 4px;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        
+        .pool-section .pool-user { 
+            color: var(--text-muted); 
+            font-size: 10px; 
+            margin-top: 2px;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        
+        .pool-section .reject-rate {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(88, 166, 255, 0.1);
+        }
+        
+        .pool-section .reject-rate.warn {
+            background: rgba(210, 153, 34, 0.1);
+            color: var(--accent-yellow);
+        }
+        
+        .pool-section .reject-rate.bad {
+            background: rgba(248, 81, 73, 0.1);
+            color: var(--accent-red);
+        }
+        
+        /* Earnings Chart Section */
+        .earnings-section {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+        
+        .earnings-section .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .earnings-section h3 {
+            color: var(--accent-green);
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 250px;
+            width: 100%;
+        }
+        
+        #earningsChart {
+            width: 100% !important;
+            height: 250px !important;
+        }
+        
+        #hashrateChart {
+            width: 100% !important;
+            height: 250px !important;
+        }
+        
+        /* Hashrate Chart Section */
+        .hashrate-section {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 16px 14px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+        
+        .hashrate-section .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        
+        .hashrate-section h3 {
+            color: var(--accent-blue);
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .hashrate-stats {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+        
+        .hashrate-stat {
+            text-align: center;
+        }
+        
+        .hashrate-stat .label {
+            color: var(--text-secondary);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .hashrate-stat .value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-top: 4px;
+        }
+        
+        .hashrate-stat .sub {
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-top: 2px;
+        }
+        
+        .earnings-stats {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+        
+        .earnings-stat {
+            text-align: center;
+        }
+        
+        .earnings-stat .label {
+            color: var(--text-secondary);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .earnings-stat .value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent-green);
+            margin-top: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .earnings-stat .sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            gap: 8px;
+        }
+        
+        .setting-item { 
+            text-align: center; 
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .setting-item .label { 
+            color: var(--text-secondary); 
+            font-size: 10px;
+            white-space: nowrap;
+        }
+        
+        .setting-item .value { 
+            color: var(--text-primary); 
+            font-size: 12px; 
+            margin-top: 4px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* Footer */
+        .last-update { 
+            text-align: center; 
+            color: var(--text-muted); 
+            font-size: 12px; 
+            margin-top: 24px;
+            padding: 16px;
+        }
+        
+        .last-update .error {
+            color: var(--accent-red);
+        }
+        
+        /* Refresh Button */
+        .refresh-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(90deg, #238636, #2ea043);
+            color: #fff;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 24px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(35, 134, 54, 0.4);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .refresh-btn:hover { 
+            background: linear-gradient(90deg, #2ea043, #3fb950);
+            transform: scale(1.05);
+        }
+        
+        .refresh-btn:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .refresh-btn.spinning::before {
+            content: '';
+            width: 14px;
+            height: 14px;
+            border: 2px solid transparent;
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Error State */
+        .error-banner {
+            background: rgba(248, 81, 73, 0.1);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            color: var(--accent-red);
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .error-banner.visible {
+            display: flex;
+        }
+        
+        /* Loading Skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-tertiary) 50%, var(--bg-secondary) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: var(--radius-sm);
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            
+            header {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                margin-bottom: 14px;
+            }
+            
+            .header-left, .header-right {
+                justify-self: center;
+                width: 100%;
+            }
+            
+            .header-center {
+                justify-self: center;
+                order: -1;
+            }
+            
+            .header-card, .nav-card {
+                min-width: auto;
+                width: 100%;
+                padding: 10px 12px;
+            }
+            
+            .header-card .links, .nav-card .links {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .header-card .links a, .nav-card .links a {
+                font-size: 11px;
+                padding: 4px 6px;
+            }
+            
+            .header-center h1 {
+                font-size: 20px;
+            }
+            
+            .header-center .subtitle {
+                font-size: 11px;
+                gap: 4px 10px;
+            }
+            
+            .combined-stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+                margin-bottom: 14px;
+            }
+            
+            .stat-card {
+                padding: 12px 8px;
+            }
+            
+            .stat-card .label {
+                font-size: 9px;
+            }
+            
+            .stat-card .value {
+                font-size: 16px;
+            }
+            
+            .stat-card .sub-value {
+                font-size: 10px;
+            }
+            
+            .miners-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .miner-card {
+                margin-bottom: 0;
+            }
+            
+            .miner-stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            
+            .miner-stat {
+                padding: 8px;
+            }
+            
+            .miner-stat .label {
+                font-size: 10px;
+            }
+            
+            .miner-stat .value {
+                font-size: 15px;
+            }
+            
+            .miner-stat .sub {
+                font-size: 9px;
+            }
+            
+            .shares-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .payments-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+            
+            .section-header h3 {
+                font-size: 16px;
+            }
+            
+            .hashrate-stats, .earnings-stats {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            
+            .hashrate-stat, .earnings-stat {
+                flex: 1 1 calc(50% - 5px);
+                min-width: 100px;
+            }
+            
+            .chart-wrapper {
+                height: 180px;
+            }
+            
+            #hashrateChart, #earningsChart {
+                height: 180px !important;
+            }
+            
+            .refresh-btn {
+                bottom: 14px;
+                right: 14px;
+                padding: 10px 14px;
+                font-size: 13px;
+            }
+            
+            .last-update {
+                font-size: 10px;
+                padding-bottom: 90px;
+            }
+            
+            /* ── Bottom Tab Bar (mobile only) ── */
+            .bottom-tabs {
+                display: flex;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: var(--bg-secondary);
+                border-top: 1px solid var(--border);
+                z-index: 1000;
+                padding: 0;
+                padding-bottom: env(safe-area-inset-bottom, 0);
+                box-shadow: 0 -4px 16px rgba(0,0,0,0.3);
+            }
+            
+            .bottom-tabs .tab {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 8px 4px;
+                text-decoration: none;
+                color: var(--text-muted);
+                font-size: 10px;
+                font-weight: 500;
+                gap: 3px;
+                transition: color 0.2s;
+                min-height: 56px;
+                -webkit-tap-highlight-color: transparent;
+            }
+            
+            .bottom-tabs .tab .tab-icon {
+                font-size: 20px;
+                line-height: 1;
+            }
+            
+            .bottom-tabs .tab.active {
+                color: var(--accent-blue);
+            }
+            
+            .bottom-tabs .tab:hover {
+                color: var(--accent-blue);
+            }
+            
+            /* hide header nav on mobile */
+            .header-left,
+            .header-right {
+                display: none;
+            }
+            
+            header {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-center {
+                order: -1;
+            }
+        }
+            
+            .pool-section {
+                padding: 10px;
+            }
+            
+            .pool-url {
+                font-size: 11px;
+                word-break: break-all;
+            }
+            
+            .pool-user {
+                font-size: 11px;
+                word-break: break-all;
+            }
+            
+            .settings-row {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            
+            .setting-item {
+                flex: 1 1 calc(33% - 4px);
+                min-width: 80px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body { padding: 8px; }
+            
+            .header-center h1 {
+                font-size: 18px;
+            }
+            
+            .combined-stats {
+                gap: 6px;
+            }
+            
+            .stat-card {
+                padding: 10px 6px;
+            }
+            
+            .stat-card .label {
+                font-size: 8px;
+            }
+            
+            .stat-card .value {
+                font-size: 14px;
+            }
+            
+            .miner-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .miner-header {
+                padding: 10px 12px;
+            }
+            
+            .miner-name {
+                font-size: 14px;
+            }
+            
+            .status-badge {
+                font-size: 9px;
+                padding: 3px 8px;
+            }
+            
+            .miner-body {
+                padding: 10px 12px;
+            }
+            
+            .shares-grid, .payments-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .hashrate-stat, .earnings-stat {
+                flex: 1 1 100%;
+            }
+            
+            .settings-row {
+                gap: 6px;
+            }
+            
+            .setting-item {
+                flex: 1 1 calc(50% - 3px);
+            }
+            
+            .setting-item .label {
+                font-size: 9px;
+            }
+            
+            .setting-item .value {
+                font-size: 11px;
+            }
+        }
+        
+        /* Touch improvements */
+        @media (hover: none) and (pointer: coarse) {
+            .stat-card:hover, .miner-card:hover {
+                transform: none;
+            }
+            
+            .stat-card:active, .miner-card:active {
+                transform: scale(0.98);
+            }
+            
+            a, button {
+                min-height: 44px;
+                min-width: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .header-card .links a, .nav-card .links a {
+                min-height: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="error-banner" id="errorBanner">
+        <span>⚠️</span>
+        <span id="errorMessage">Failed to load data</span>
+    </div>
+    
+    <header>
+        <div class="header-left">
+            <div class="header-card">
+                <div class="label">Links</div>
+                <div class="links">
+                    <a href="https://whattomine.com/" target="_blank">WhatToMine</a>
+                    <a href="https://explorer.nervos.org/" target="_blank">CKB Explorer</a>
+                    <a href="https://ckb.2miners.com/account/ckb1qyqfv9d5vr7x5ss8wuv6a7pyuazwyltjgh7qdvcyqs#rewards" target="_blank">Nervos Pool</a>
+                    <a href="https://explorer.nervos.org/address/ckb1qyqfv9d5vr7x5ss8wuv6a7pyuazwyltjgh7qdvcyqs" target="_blank">My CKB Address</a>
+                </div>
+            </div>
+        </div>
+        <div class="header-center">
+            <h1>⛏️ CK-Box Dashboard</h1>
+            <p class="subtitle">
+                <span class="dot" id="statusDot"></span>
+                <span id="minerCount">--</span> miners
+                <span id="walletInfo"></span>
+                <span id="autoStatus">| Auto-refresh ON</span>
+            </p>
+        </div>
+        <div class="header-right">
+            <div class="nav-card">
+                <div class="label">Navigation</div>
+                <div class="links">
+                    <a href="/network">📊 Network</a>
+                    <a href="/statistics">📉 Statistics</a>
+                    <a href="/blocks">🧱 Blocks</a>
+                    <a href="/transactions">🔄 Transactions</a>
+                    <a href="/market">📈 Market</a>
+                    <a href="/payments">💳 Payments</a>
+                    <a href="/calculator">🧮 Calculator</a>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <div class="combined-stats" id="statsGrid">
+        <div class="stat-card">
+            <div class="label">Total Hashrate</div>
+            <div class="value" id="totalHashrate">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Avg (5 min)</div>
+            <div class="value" id="avgHashrate">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Pool Luck</div>
+            <div class="value" id="poolLuck">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Miners Online</div>
+            <div class="value" id="minersOnline">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Your Shares</div>
+            <div class="value" id="yourShares">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Share Time</div>
+            <div class="value" id="avgShareTime">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Rejection Rate</div>
+            <div class="value" id="rejectionRate">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">24h Earned</div>
+            <div class="value" id="estDaily">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">30d Earned</div>
+            <div class="value" id="estMonthly">--</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Time to Payout</div>
+            <div class="value" id="timeToPayout">--</div>
+            <div class="sub-value" id="payoutProgress"></div>
+        </div>
+    </div>
+    
+    <div class="hashrate-section" id="hashrateSection">
+        <div class="section-header">
+            <h3>⛏️ Hashrate History</h3>
+            <span class="label" style="color: var(--text-muted); font-size: 11px;">Last 24 hours</span>
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="hashrateChart"></canvas>
+        </div>
+        
+        <div class="hashrate-stats" id="hashrateStats">
+            <div class="hashrate-stat">
+                <div class="label">Current</div>
+                <div class="value" id="currentHashrate">--</div>
+            </div>
+            <div class="hashrate-stat">
+                <div class="label">Avg</div>
+                <div class="value" id="chartAvgHashrate">--</div>
+            </div>
+            <div class="hashrate-stat">
+                <div class="label">Peak</div>
+                <div class="value" id="peakHashrate">--</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="earnings-section" id="earningsSection" style="display:none;">
+        <div class="section-header">
+            <h3>💰 Earnings History (Last 30 Days)</h3>
+            <span class="label" style="color: var(--text-muted); font-size: 11px;">CKB &amp; USD Value</span>
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="earningsChart"></canvas>
+        </div>
+        
+        <div class="earnings-stats" id="earningsStats">
+            <div class="earnings-stat">
+                <div class="label">Total CKB</div>
+                <div class="value" id="totalEarningsCKB">--</div>
+                <div class="sub" id="totalEarningsUSD">--</div>
+            </div>
+            <div class="earnings-stat">
+                <div class="label">Daily Average</div>
+                <div class="value" id="avgDailyCKB">--</div>
+                <div class="sub" id="avgDailyUSD">--</div>
+            </div>
+            <div class="earnings-stat">
+                <div class="label">Best Day</div>
+                <div class="value" id="bestDayCKB">--</div>
+                <div class="sub" id="bestDayDate">--</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="payments-section" id="paymentsSection" style="display:none;">
+        <div class="section-header">
+            <h3>⏳ Your Pending Blocks</h3>
+            <span class="label" style="color: var(--text-muted); font-size: 11px;">Immature + Confirmed rewards</span>
+        </div>
+        <div class="payments-grid" id="paymentsGrid"></div>
+    </div>
+    
+    <div class="payments-section" id="blocksSection" style="display:none;">
+        <div class="section-header">
+            <h3>🧱 New Blocks</h3>
+        </div>
+        <div class="payments-grid" id="blocksGrid"></div>
+    </div>
+    
+    <div class="miners-grid" id="minersGrid"></div>
+    
+    <p class="last-update">
+        Updated: <span id="lastUpdate">--</span> 
+        <span id="refreshInfo">| Next refresh: <span id="nextRefresh">--</span></span>
+    </p>
+    
+    <!-- Bottom Tab Bar (mobile) -->
+    <nav class="bottom-tabs">
+        <a href="/network" class="tab" onclick="handleTab(this)">
+            <span class="tab-icon">📊</span>
+            Network
+        </a>
+        <a href="/statistics" class="tab" onclick="handleTab(this)">
+            <span class="tab-icon">📉</span>
+            Stats
+        </a>
+        <a href="/market" class="tab" onclick="handleTab(this)">
+            <span class="tab-icon">📈</span>
+            Market
+        </a>
+        <a href="/calculator" class="tab" onclick="handleTab(this)">
+            <span class="tab-icon">🧮</span>
+            Calc
+        </a>
+        <a href="/payments" class="tab" onclick="handleTab(this)">
+            <span class="tab-icon">💳</span>
+            Payouts
+        </a>
+        <a href="/transactions" class="tab" onclick="handleTab(this)">
+            <span class="tab-icon">🔄</span>
+            Txns
+        </a>
+    </nav>
+    
+    <button class="refresh-btn" id="refreshBtn" onclick="loadData()">↻ Refresh</button>
+    
+    <script>
+        // Configuration
+        const CONFIG = {
+            REFRESH_INTERVAL: 15000,
+            REFRESH_COUNTDOWN: 15
+        };
+        
+        // State
+        let autoRefresh = true;
+        let refreshTimer = null;
+        let countdownTimer = null;
+        let countdown = CONFIG.REFRESH_COUNTDOWN;
+        let isLoading = false;
+        
+        // Utility functions
+        function formatHashrate(h) {
+            if (h === null || h === undefined || isNaN(h)) return '--';
+            const hash = parseFloat(h) * 1e6;
+            if (hash >= 1e12) return (hash / 1e12).toFixed(2) + ' TH/s';
+            if (hash >= 1e9) return (hash / 1e9).toFixed(2) + ' GH/s';
+            if (hash >= 1e6) return (hash / 1e6).toFixed(2) + ' MH/s';
+            return hash.toFixed(0) + ' H/s';
+        }
+        
+        function formatUptime(seconds) {
+            if (!seconds || seconds <= 0) return '--';
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            if (days > 0) return `${days}d ${hours}h ${mins}m`;
+            if (hours > 0) return `${hours}h ${mins}m`;
+            return `${mins}m`;
+        }
+        
+        function formatTemperature(temp, target) {
+            if (temp === null || temp === undefined) return '--';
+            const t = parseFloat(temp);
+            const targetTemp = target ? parseFloat(target) : 75;
+            const percent = Math.min(100, (t / targetTemp) * 100);
+            let colorClass = 'good';
+            if (t >= targetTemp - 5) colorClass = 'warn';
+            if (t >= targetTemp) colorClass = 'bad';
+            
+            return {
+                text: `${t.toFixed(0)}°C`,
+                percent: percent,
+                class: colorClass
+            };
+        }
+        
+        function showError(message) {
+            const banner = document.getElementById('errorBanner');
+            const msg = document.getElementById('errorMessage');
+            msg.textContent = message;
+            banner.classList.add('visible');
+            setTimeout(() => banner.classList.remove('visible'), 5000);
+        }
+        
+        function setLoading(loading) {
+            isLoading = loading;
+            const btn = document.getElementById('refreshBtn');
+            if (loading) {
+                btn.disabled = true;
+                btn.classList.add('spinning');
+                btn.innerHTML = ' Loading...';
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('spinning');
+                btn.innerHTML = '↻ Refresh';
+            }
+        }
+        
+        // Fetch with timeout and retry
+        async function fetchWithTimeout(url, options = {}, timeout = 10000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            try {
+                const response = await fetch(url, { ...options, signal: controller.signal, cache: 'no-cache' });
+                clearTimeout(id);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                clearTimeout(id);
+                throw error;
+            }
+        }
+        
+        // Main data loading
+        async function loadData() {
+            if (isLoading) return;
+            setLoading(true);
+            
+            try {
+                // Clear error banner
+                document.getElementById('errorBanner').classList.remove('visible');
+                
+                const data = await fetchWithTimeout('/api/status');
+                updateDashboard(data);
+                loadShares(data);
+                loadHashrate();
+                
+                // Parallel fetch for additional data
+                await Promise.all([
+                    loadPayments(),
+                    loadBlocks(),
+                    loadEarnings()
+                ]);
+                
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+                document.getElementById('statusDot').classList.remove('offline');
+                
+                if (autoRefresh) startAutoRefresh();
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showError(`Failed to load: ${error.message}`);
+                document.getElementById('statusDot').classList.add('offline');
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        function updateDashboard(data) {
+            // Update header
+            document.getElementById('minerCount').textContent = `${data.online_miners}/${data.total_miners}`;
+            
+            // Update stats
+            document.getElementById('totalHashrate').textContent = formatHashrate(data.total_current_hashrate);
+            document.getElementById('avgHashrate').textContent = formatHashrate(data.total_avg_hashrate);
+            
+            // Rejection rate
+            if (data.rejection_rate != null) {
+                const rateEl = document.getElementById('rejectionRate');
+                const rate = data.rejection_rate;
+                rateEl.textContent = rate.toFixed(2) + '%';
+                rateEl.className = 'value ' + (rate > 2 ? 'bad' : rate > 0.5 ? 'warn' : 'good');
+            }
+            
+            // Pool stats
+            if (data.pool) {
+                document.getElementById('poolLuck').textContent = (data.pool.luck || '--') + '%';
+            }
+            
+            // Miners online/offline
+            const onlineCount = data.online_miners != null ? data.online_miners : '--';
+            const totalCount = data.total_miners != null ? data.total_miners : '--';
+            const minersOnlineEl = document.getElementById('minersOnline');
+            minersOnlineEl.textContent = onlineCount + ' / ' + totalCount;
+            minersOnlineEl.className = 'value ' + (onlineCount == totalCount ? 'good' : onlineCount > 0 ? 'warn' : 'bad');
+            
+            // 24h earnings
+            if (data.pool) {
+                let estDailyCKB = '--';
+                if (data.pool.reward_24h) {
+                    estDailyCKB = data.pool.reward_24h.toFixed(1);
+                }
+                const ckbPrice = data.pool.ckb_price || 0;
+                const dailyEl = document.getElementById('estDaily');
+                if (estDailyCKB !== '--' && ckbPrice > 0) {
+                    const usdAmount = (estDailyCKB * ckbPrice).toFixed(2);
+                    dailyEl.innerHTML = `<span class="usd-amount" style="color: var(--accent-green) !important;">$${usdAmount}</span><br><span class="ckb-amount" style="color: var(--accent-blue) !important;">${estDailyCKB} CKB</span>`;
+                } else {
+                    dailyEl.textContent = estDailyCKB + ' CKB';
+                }
+                
+                // 30d earnings
+                let estMonthlyCKB = '--';
+                if (data.pool.sumrewards) {
+                    const reward30d = data.pool.sumrewards.find(r => r.inverval === 2592000);
+                    if (reward30d) {
+                        estMonthlyCKB = (reward30d.reward / 1e8).toFixed(0);
+                    }
+                }
+                const monthlyEl = document.getElementById('estMonthly');
+                if (estMonthlyCKB !== '--' && ckbPrice > 0) {
+                    const usdAmount = (estMonthlyCKB * ckbPrice).toFixed(2);
+                    monthlyEl.innerHTML = `<span class="usd-amount" style="color: var(--accent-green) !important;">$${usdAmount}</span><br><span class="ckb-amount" style="color: var(--accent-blue) !important;">${estMonthlyCKB} CKB</span>`;
+                } else {
+                    monthlyEl.textContent = estMonthlyCKB + ' CKB';
+                }
+                
+                // Time to payout calculation
+                const pendingCKB = data.pool.pending || 0;
+                const minPayout = data.pool.min_payout || 500;
+                const reward24h = data.pool.reward_24h || 0;
+                const timeToPayoutEl = document.getElementById('timeToPayout');
+                const payoutProgressEl = document.getElementById('payoutProgress');
+                
+                if (pendingCKB >= minPayout) {
+                    timeToPayoutEl.textContent = 'Ready!';
+                    timeToPayoutEl.className = 'value good';
+                    payoutProgressEl.textContent = `${pendingCKB.toFixed(1)} / ${minPayout} CKB`;
+                } else if (reward24h > 0) {
+                    const remaining = minPayout - pendingCKB;
+                    const hoursToPayout = remaining / (reward24h / 24);
+                    const daysToPayout = hoursToPayout / 24;
+                    
+                    if (hoursToPayout < 1) {
+                        timeToPayoutEl.textContent = '< 1h';
+                    } else if (hoursToPayout < 24) {
+                        timeToPayoutEl.textContent = Math.ceil(hoursToPayout) + 'h';
+                    } else {
+                        timeToPayoutEl.textContent = daysToPayout.toFixed(1) + ' days';
+                    }
+                    
+                    const progressPct = (pendingCKB / minPayout) * 100;
+                    payoutProgressEl.textContent = `${pendingCKB.toFixed(1)} / ${minPayout} CKB (${progressPct.toFixed(1)}%)`;
+                } else {
+                    timeToPayoutEl.textContent = '--';
+                    payoutProgressEl.textContent = `${pendingCKB.toFixed(1)} / ${minPayout} CKB`;
+                }
+            }
+            
+            // Render miners
+            renderMiners(data.miners, data.pool?.ckb_price || 0);
+        }
+        
+        async function loadShares(data) {
+            if (!data.pool) return;
+            try {
+                const shares = await fetchWithTimeout('/api/shares');
+                if (shares && shares.valid && shares.valid.length > 0) {
+                    // API returns multiple 5-minute buckets over ~8 hours
+                    // Only use the most recent bucket (last 5 minutes)
+                    const validShares = shares.valid[0]?.y || 0;  // Most recent is first
+                    const staleShares = shares.stale?.[0]?.y || 0;
+                    const invalidShares = shares.invalid?.[0]?.y || 0;
+                    const totalShares = validShares + staleShares + invalidShares;
+                    
+                    const stalePct = totalShares > 0 ? ((staleShares / totalShares) * 100).toFixed(1) : 0;
+                    const invalidPct = totalShares > 0 ? ((invalidShares / totalShares) * 100).toFixed(1) : 0;
+                    
+                    // Calculate actual average time per share
+                    // 300 seconds (5 minutes) / number of shares = seconds per share
+                    let avgShareTime = '--';
+                    if (validShares > 0) {
+                        const bucketSeconds = parseInt(shares.bucket) * 60 || 300; // Convert "5m" to 300 seconds
+                        const secondsPerShare = bucketSeconds / validShares;
+                        if (secondsPerShare < 60) {
+                            avgShareTime = secondsPerShare.toFixed(0) + 's';
+                        } else {
+                            avgShareTime = (secondsPerShare / 60).toFixed(1) + 'm';
+                        }
+                    }
+                    document.getElementById('avgShareTime').textContent = avgShareTime;
+                    
+                    // Update the Your Shares card
+                    document.getElementById('yourShares').textContent = totalShares.toLocaleString();
+                    
+                    const grid = document.getElementById('sharesGrid');
+                    grid.innerHTML = `
+                        <div class="share-stat">
+                            <div class="label">Valid</div>
+                            <div class="value good">${validShares.toLocaleString()}</div>
+                            <div class="percent">${totalShares > 0 ? ((validShares/totalShares)*100).toFixed(1) : 0}%</div>
+                        </div>
+                        <div class="share-stat">
+                            <div class="label">Stale</div>
+                            <div class="value ${stalePct > 2 ? 'warn' : ''}">${staleShares.toLocaleString()}</div>
+                            <div class="percent">${stalePct}%</div>
+                        </div>
+                        <div class="share-stat">
+                            <div class="label">Invalid</div>
+                            <div class="value ${invalidPct > 1 ? 'bad' : ''}">${invalidShares.toLocaleString()}</div>
+                            <div class="percent">${invalidPct}%</div>
+                        </div>
+                        <div class="share-stat">
+                            <div class="label">Total</div>
+                            <div class="value secondary">${totalShares.toLocaleString()}</div>
+                            <div class="percent">100%</div>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error('Shares error:', err);
+            }
+        }
+        
+        async function loadPayments() {
+            try {
+                const rewards = await fetchWithTimeout('/api/rewards');
+                if (rewards && rewards.rewards && rewards.rewards.length > 0) {
+                    document.getElementById('paymentsSection').style.display = 'block';
+                    
+                    const grid = document.getElementById('paymentsGrid');
+                    grid.innerHTML = '';
+                    
+                    rewards.rewards.slice(0, 12).forEach(p => {
+                        const amountCKB = (p.reward / 1e8).toFixed(1);
+                        const date = new Date(p.timestamp * 1000);
+                        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const statusClass = p.immature ? 'immature' : 'confirmed';
+                        const statusText = p.immature ? 'Pending' : 'Paid';
+                        
+                        const div = document.createElement('div');
+                        div.className = `payment-stat ${statusClass}`;
+                        div.innerHTML = `
+                            <div class="label">Block ${p.blockheight.toLocaleString()}</div>
+                            <div class="value ${statusClass}">${amountCKB} CKB</div>
+                            <div class="time">${timeStr} • ${statusText}</div>
+                        `;
+                        grid.appendChild(div);
+                    });
+                }
+            } catch (err) {
+                console.error('Rewards error:', err);
+            }
+        }
+        
+        async function loadBlocks() {
+            try {
+                const blocks = await fetchWithTimeout('/api/blocks');
+                if (blocks && blocks.candidates && blocks.candidates.length > 0) {
+                    document.getElementById('blocksSection').style.display = 'block';
+                    
+                    const grid = document.getElementById('blocksGrid');
+                    grid.innerHTML = '';
+                    
+                    blocks.candidates.slice(0, 10).forEach(b => {
+                        const date = new Date(b.timestamp * 1000);
+                        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const div = document.createElement('div');
+                        div.className = 'payment-stat';
+                        div.innerHTML = `
+                            <div class="label">Block #${b.height.toLocaleString()}</div>
+                            <div class="value" style="color: var(--accent-orange);">${b.currentLuck}% luck</div>
+                            <div class="time">${timeStr}</div>
+                        `;
+                        grid.appendChild(div);
+                    });
+                }
+            } catch (err) {
+                console.error('Blocks error:', err);
+            }
+        }
+        
+        let earningsChart = null;
+        let hashrateChart = null;
+        
+        async function loadHashrate() {
+            try {
+                const history = await fetchWithTimeout('/api/history');
+                if (history && Object.keys(history).length > 0) {
+                    document.getElementById('hashrateSection').style.display = 'block';
+                    updateHashrateChart(history);
+                }
+            } catch (err) {
+                console.error('Hashrate error:', err);
+            }
+        }
+        
+        function updateHashrateChart(history) {
+            // Combine all miner hashrates into total hashrate over time
+            const minerNames = Object.keys(history);
+            
+            // Collect all points with their timestamps
+            const allPoints = [];
+            minerNames.forEach(miner => {
+                (history[miner] || []).forEach(point => {
+                    allPoints.push({
+                        timestamp: new Date(point.timestamp).getTime(),
+                        hashrate: point.hashrate,
+                        miner: miner
+                    });
+                });
+            });
+            
+            // Sort by timestamp
+            allPoints.sort((a, b) => a.timestamp - b.timestamp);
+            
+            // Group into time buckets (5 minute intervals)
+            const BUCKET_SIZE = 300000; // 300 seconds = 5 minutes
+            const buckets = new Map();
+            
+            allPoints.forEach(point => {
+                const bucketKey = Math.floor(point.timestamp / BUCKET_SIZE) * BUCKET_SIZE;
+                if (!buckets.has(bucketKey)) {
+                    buckets.set(bucketKey, { totalHashrate: 0, minerLastSeen: {} });
+                }
+                const bucket = buckets.get(bucketKey);
+                // Sum all hashrates at this bucket, but only count each miner once
+                // Use the latest reading for each miner in each bucket
+                const prevHashrate = bucket.minerLastSeen[point.miner] || 0;
+                bucket.totalHashrate -= prevHashrate; // remove old value if any
+                bucket.totalHashrate += point.hashrate; // add new value
+                bucket.minerLastSeen[point.miner] = point.hashrate;
+            });
+            
+            // Convert to arrays for chart
+            const sortedTimes = Array.from(buckets.keys()).sort();
+            const labels = sortedTimes.map(ts => {
+                const date = new Date(ts);
+                return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            });
+            const combinedHashrate = sortedTimes.map(ts => buckets.get(ts).totalHashrate);
+            
+            // Calculate stats
+            const current = combinedHashrate[combinedHashrate.length - 1] || 0;
+            const avg = combinedHashrate.reduce((a, b) => a + b, 0) / combinedHashrate.length;
+            const peak = Math.max(...combinedHashrate);
+            
+            document.getElementById('currentHashrate').textContent = formatHashrate(current);
+            document.getElementById('chartAvgHashrate').textContent = formatHashrate(avg);
+            document.getElementById('peakHashrate').textContent = formatHashrate(peak);
+            
+            console.log('Hashrate chart:', { labels: labels.length, current, avg, peak, sample: combinedHashrate[0] });
+            
+            // If chart exists, update data
+            if (hashrateChart) {
+                hashrateChart.data.labels = labels;
+                hashrateChart.data.datasets[0].data = combinedHashrate;
+                hashrateChart.data.datasets[1].data = combinedHashrate.map(() => avg);
+                hashrateChart.update('none');
+                return;
+            }
+            
+            // Create chart
+            const ctx = document.getElementById('hashrateChart').getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 250);
+            gradient.addColorStop(0, 'rgba(88, 166, 255, 0.3)');
+            gradient.addColorStop(1, 'rgba(88, 166, 255, 0.02)');
+            
+            hashrateChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Hashrate',
+                        data: combinedHashrate,
+                        borderColor: '#58a6ff',
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        borderWidth: 2
+                    }, {
+                        label: 'Average',
+                        data: combinedHashrate.map(() => avg),
+                        borderColor: '#d29922',
+                        borderWidth: 1.5,
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        fill: false,
+                        tension: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 300 },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                        display: false,
+                    },
+                        tooltip: {
+                            backgroundColor: '#1e2433',
+                            titleColor: '#e6edf3',
+                            bodyColor: '#e6edf3',
+                            borderColor: '#30363d',
+                            borderWidth: 1,
+                            padding: 12,
+                            callbacks: {
+                                label: ctx => {
+                                    if (ctx.datasetIndex === 1) return `Avg: ${formatHashrate(ctx.raw)}`;
+                                    return `Total: ${formatHashrate(ctx.raw)}`;
+                                }
+                            }
+                        },
+                        // Draw average value label on the average line
+                        afterDraw: function(chart) {
+                            if (!chart.data.datasets[1]) return;
+                            const ctx = chart.ctx;
+                            const meta = chart.getDatasetMeta(1);
+                            const lastPoint = meta.data[meta.data.length - 1];
+                            if (!lastPoint) return;
+                            
+                            const avg = chart.data.datasets[1].data[0];
+                            const x = lastPoint.x + 6;
+                            const y = lastPoint.y;
+                            
+                            ctx.save();
+                            ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif';
+                            ctx.fillStyle = '#d29922';
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(formatHashrate(avg), x, y);
+                            ctx.restore();
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(48, 54, 61, 0.5)' },
+                            ticks: { color: '#8b949e', maxTicksLimit: 12 }
+                        },
+                        y: {
+                            grid: { color: 'rgba(48, 54, 61, 0.5)' },
+                            ticks: {
+                                color: '#8b949e',
+                                callback: v => formatHashrate(v)
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        async function loadEarnings() {
+            try {
+                const earnings = await fetchWithTimeout('/api/earnings');
+                if (earnings && earnings.length > 0) {
+                    document.getElementById('earningsSection').style.display = 'block';
+                    updateEarningsChart(earnings);
+                }
+            } catch (err) {
+                console.error('Earnings error:', err);
+            }
+        }
+        
+        function updateEarningsChart(data) {
+            // Use last 30 days
+            const recent = data.slice(-30);
+            
+            const labels = recent.map(d => {
+                // Parse YYYY-MM-DD as local date to match 2miners calendar days
+                const [year, month, day] = d.date.split('-').map(Number);
+                const date = new Date(year, month - 1, day);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            });
+            
+            const ckbValues = recent.map(d => d.ckb_earned);
+            const usdValues = recent.map(d => d.usd_value);
+            
+            // Calculate stats
+            const totalCKB = ckbValues.reduce((a, b) => a + b, 0);
+            const totalUSD = usdValues.reduce((a, b) => a + b, 0);
+            const avgDailyCKB = totalCKB / ckbValues.length;
+            const avgDailyUSD = totalUSD / usdValues.length;
+            
+            const maxCKB = Math.max(...ckbValues);
+            const maxIndex = ckbValues.indexOf(maxCKB);
+            const bestDayDate = recent[maxIndex]?.date ? (() => {
+                const [year, month, day] = recent[maxIndex].date.split('-').map(Number);
+                return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            })() : '--';
+            
+            document.getElementById('totalEarningsCKB').textContent = totalCKB.toFixed(1) + ' CKB';
+            document.getElementById('totalEarningsUSD').textContent = '$' + totalUSD.toFixed(2);
+            document.getElementById('avgDailyCKB').textContent = avgDailyCKB.toFixed(1) + ' CKB';
+            document.getElementById('avgDailyUSD').textContent = '$' + avgDailyUSD.toFixed(2);
+            document.getElementById('bestDayCKB').textContent = maxCKB.toFixed(1) + ' CKB';
+            document.getElementById('bestDayDate').textContent = bestDayDate;
+            
+            // If chart exists, update data instead of destroying
+            if (earningsChart) {
+                earningsChart.data.labels = labels;
+                earningsChart.data.datasets[0].data = ckbValues;
+                earningsChart.data.datasets[1].data = usdValues;
+                earningsChart.update('none'); // 'none' mode for smooth update
+                return;
+            }
+            
+            // Create chart only on first load
+            const ctx = document.getElementById('earningsChart').getContext('2d');
+            
+            // Create gradient for CKB
+            const gradientCKB = ctx.createLinearGradient(0, 0, 0, 250);
+            gradientCKB.addColorStop(0, 'rgba(88, 166, 255, 0.3)');
+            gradientCKB.addColorStop(1, 'rgba(88, 166, 255, 0.02)');
+            
+            // Create gradient for USD
+            const gradientUSD = ctx.createLinearGradient(0, 0, 0, 250);
+            gradientUSD.addColorStop(0, 'rgba(63, 185, 80, 0.3)');
+            gradientUSD.addColorStop(1, 'rgba(63, 185, 80, 0.02)');
+            
+            earningsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'CKB Earned',
+                        data: ckbValues,
+                        backgroundColor: gradientCKB,
+                        borderColor: '#58a6ff',
+                        borderWidth: 1,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'USD Value',
+                        data: usdValues,
+                        backgroundColor: gradientUSD,
+                        borderColor: '#3fb950',
+                        borderWidth: 1,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 0 }, // No animation on init to prevent flicker
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: '#e6edf3',
+                                usePointStyle: true,
+                                pointStyle: 'rectRounded'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1e2433',
+                            titleColor: '#e6edf3',
+                            bodyColor: '#e6edf3',
+                            borderColor: '#30363d',
+                            borderWidth: 1,
+                            padding: 12,
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: ${ctx.raw.toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { 
+                                color: 'rgba(48, 54, 61, 0.5)',
+                                drawBorder: false
+                            },
+                            ticks: { 
+                                color: '#8b949e',
+                                maxTicksLimit: 10,
+                                maxRotation: 45
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { 
+                                color: 'rgba(48, 54, 61, 0.5)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#8b949e',
+                                callback: v => v.toFixed(0) + ' CKB'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            ticks: {
+                                color: '#3fb950',
+                                callback: v => '$' + v.toFixed(2)
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderMiners(miners, ckbPrice) {
+            const grid = document.getElementById('minersGrid');
+            grid.innerHTML = '';
+            
+            miners.forEach(miner => {
+                const activePool = miner.pools.find(p => p.active) || miner.pools[0];
+                const setting = miner.setting || {};
+                const status = miner.status || {};
+                
+                // Extract temperatures from status - handle multiple field names
+                let temps = [];
+                if (status.temperatures && Array.isArray(status.temperatures) && status.temperatures.length > 0) {
+                    temps = status.temperatures;
+                } else if (status.temp && Array.isArray(status.temp) && status.temp.length > 0) {
+                    temps = status.temp;
+                } else if (status.chip_temp && Array.isArray(status.chip_temp) && status.chip_temp.length > 0) {
+                    temps = status.chip_temp;
+                } else if (status.chips_temp && Array.isArray(status.chips_temp) && status.chips_temp.length > 0) {
+                    temps = status.chips_temp;
+                } else if (typeof status.temperature === 'number') {
+                    temps = [status.temperature];
+                } else if (typeof status.board_temp === 'number') {
+                    temps = [status.board_temp];
+                } else if (status.max_temp && typeof status.max_temp === 'number') {
+                    temps = [status.max_temp];
+                } else if (status.avg_temp && typeof status.avg_temp === 'number') {
+                    temps = [status.avg_temp];
+                }
+                
+                // Calculate average temperature from all chip temps
+                let avgTemp = null;
+                if (temps.length > 0) {
+                    const sum = temps.reduce((a, b) => a + (parseFloat(b) || 0), 0);
+                    avgTemp = (sum / temps.length).toFixed(0);
+                }
+                
+                const tempTarget = setting.temp_targets?.[0] || setting.temp_target || 75;
+                const tempDisplay = avgTemp !== null ? formatTemperature(parseFloat(avgTemp), tempTarget) : null;
+                
+                // Calculate reject rate
+                const totalShares = (miner.shares_valid || 0) + (miner.shares_stale || 0) + (miner.shares_invalid || 0);
+                const rejectRate = totalShares > 0 
+                    ? (((miner.shares_stale || 0) + (miner.shares_invalid || 0)) / totalShares * 100).toFixed(2)
+                    : 0;
+                
+                const card = document.createElement('div');
+                card.className = 'miner-card' + (miner.online ? '' : ' offline');
+                
+                card.innerHTML = `
+                    <div class="miner-header">
+                        <div>
+                            <div class="miner-name">
+                                <span class="status-dot"></span>
+                                ${escapeHtml(miner.name)}
+                            </div>
+                            <div class="miner-ip">${miner.ip} • ${miner.mac ? escapeHtml(miner.mac.substring(0, 8)) + '...' : '--'}</div>
+                        </div>
+                        <span class="status-badge ${miner.online ? 'online' : 'offline'}">
+                            ${miner.online ? 'ONLINE' : 'OFFLINE'}
+                        </span>
+                    </div>
+                    <div class="miner-body">
+                        <div class="miner-stats">
+                            <div class="miner-stat">
+                                <div class="label">Hashrate</div>
+                                <div class="value">${formatHashrate(miner.current_hashrate)}</div>
+                                ${miner.avg_hashrate ? `<div class="sub">avg: ${formatHashrate(miner.avg_hashrate)}</div>` : ''}
+                            </div>
+                            <div class="miner-stat">
+                                <div class="label">Temperature</div>
+                                <div class="value ${tempDisplay?.class || ''}">
+                                    ${tempDisplay ? `
+                                        <div class="temp-display">
+                                            ${tempDisplay.text}
+                                            <div class="temp-bar">
+                                                <div class="fill ${tempDisplay.class}" style="width: ${tempDisplay.percent}%"></div>
+                                            </div>
+                                        </div>
+                                    ` : '<span style="color: var(--text-muted);">--</span>'}
+                                </div>
+                                ${tempDisplay ? `<div class="sub">target: ${tempTarget}°C</div>` : '<div class="sub">no temp data</div>'}
+                            </div>
+                            <div class="miner-stat">
+                                <div class="label">Firmware / Model</div>
+                                <div class="value" style="font-size: 16px; color: var(--text-primary);">${escapeHtml(miner.firmware || '--')}</div>
+                                <div class="sub">${escapeHtml(miner.model || '--')}</div>
+                            </div>
+                            <div class="miner-stat">
+                                <div class="label">Valid Shares</div>
+                                <div class="value good">${(miner.shares_valid || 0).toLocaleString()}</div>
+                                <div class="sub">total accepted</div>
+                            </div>
+                            <div class="miner-stat">
+                                <div class="label">Stale / Invalid</div>
+                                <div class="value ${(miner.shares_stale || 0) > 10 ? 'warn' : ''}">
+                                    ${(miner.shares_stale || 0).toLocaleString()} / ${(miner.shares_invalid || 0).toLocaleString()}
+                                </div>
+                                <div class="sub">${rejectRate}% reject</div>
+                            </div>
+                            <div class="miner-stat">
+                                <div class="label">Uptime</div>
+                                <div class="value">${formatUptime(miner.uptime_seconds)}</div>
+                                <div class="sub">${miner.worker_offline ? '⚠️ worker offline' : 'pool connected'}</div>
+                            </div>
+                        </div>
+                        
+                        ${activePool ? `
+                        <div class="pool-section">
+                            <div class="label">
+                                <span>Pool</span>
+                                <span class="reject-rate ${rejectRate > 2 ? 'warn' : ''} ${rejectRate > 5 ? 'bad' : ''}">
+                                    ${rejectRate}% reject
+                                </span>
+                            </div>
+                            <div class="pool-url">${escapeHtml(activePool.url || 'Not connected')}</div>
+                            <div class="pool-user">${escapeHtml(activePool.user || '')}</div>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="settings-row">
+                            <div class="setting-item">
+                                <div class="label">Power Plan</div>
+                                <div class="value">${escapeHtml(setting.manualPowerplan || setting.powerplan || '-')}</div>
+                            </div>
+                            <div class="setting-item">
+                                <div class="label">Fan Speed</div>
+                                <div class="value">${status.fan_speed ? status.fan_speed + '%' : '-'}</div>
+                            </div>
+                            <div class="setting-item">
+                                <div class="label">LED</div>
+                                <div class="value">${setting.ledcontrol ? 'ON' : 'OFF'}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function startAutoRefresh() {
+            clearTimeout(refreshTimer);
+            clearInterval(countdownTimer);
+            countdown = CONFIG.REFRESH_COUNTDOWN;
+            updateCountdown();
+            
+            countdownTimer = setInterval(() => {
+                countdown--;
+                updateCountdown();
+            }, 1000);
+            
+            refreshTimer = setTimeout(() => { loadData(); }, CONFIG.REFRESH_INTERVAL);
+        }
+        
+        function updateCountdown() {
+            const el = document.getElementById('nextRefresh');
+            if (el) el.textContent = countdown + 's';
+        }
+        
+        // Highlight active tab
+        function highlightTab() {
+            const path = window.location.pathname;
+            document.querySelectorAll('.bottom-tabs .tab').forEach(tab => {
+                tab.classList.toggle('active', tab.getAttribute('href') === path);
+            });
+        }
+        
+        // Handle tab click
+        function handleTab(tab) {
+            // Visual feedback
+            document.querySelectorAll('.bottom-tabs .tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            highlightTab();
+            loadData();
+        });
+        
+        // Pause refresh when tab is hidden
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                autoRefresh = false;
+                clearTimeout(refreshTimer);
+                clearInterval(countdownTimer);
+            } else {
+                autoRefresh = true;
+                loadData();
+            }
+        });
+    </script>
+</body>
+</html>

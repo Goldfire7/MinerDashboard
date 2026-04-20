@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Hashrate - CKB</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #1e2433;
+            --border: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --accent-orange: #f0883e;
+            --accent-purple: #a371f7;
+            --shadow: 0 4px 12px rgba(0,0,0,0.3);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+            --radius: 12px;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1f2e 0%, var(--bg-primary) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 16px;
+            line-height: 1.5;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        h1 { 
+            color: var(--accent-blue); 
+            font-size: clamp(20px, 4vw, 26px); 
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .back-link {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+            padding: 6px 12px;
+            border-radius: var(--radius);
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid rgba(88, 166, 255, 0.2);
+            transition: all 0.2s;
+        }
+        
+        .back-link:hover {
+            background: rgba(88, 166, 255, 0.2);
+        }
+        
+        .chart-container {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto 20px;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .chart-title { 
+            color: var(--accent-blue); 
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(90deg, #238636, #2ea043);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        
+        .refresh-btn:hover { 
+            background: linear-gradient(90deg, #2ea043, #3fb950);
+        }
+        
+        .refresh-btn:disabled { 
+            background: var(--text-muted); 
+            cursor: not-allowed;
+        }
+        
+        .refresh-btn.spinning::before {
+            content: '';
+            width: 12px;
+            height: 12px;
+            border: 2px solid transparent;
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Chart.js container - FIXED HEIGHT */
+        .chart-wrapper {
+            position: relative;
+            height: 280px;
+            width: 100%;
+        }
+        
+        #hashrateChart, #difficultyChart {
+            width: 100% !important;
+            height: 280px !important;
+        }
+        
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-box {
+            background: var(--bg-primary);
+            padding: 14px 24px;
+            border-radius: var(--radius);
+            text-align: center;
+            min-width: 100px;
+            border: 1px solid var(--border);
+            transition: border-color 0.2s;
+        }
+        
+        .stat-box:hover {
+            border-color: var(--accent-blue);
+        }
+        
+        .stat-box .label { 
+            color: var(--text-secondary); 
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-box .value { 
+            font-size: 18px; 
+            font-weight: 700; 
+            color: var(--accent-blue); 
+            margin-top: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .data-info { 
+            color: var(--text-muted); 
+            font-size: 12px; 
+            margin-top: 12px; 
+            text-align: center;
+        }
+        
+        .loading { 
+            color: var(--text-secondary); 
+            text-align: center; 
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .loading::after {
+            content: '';
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        .error {
+            color: var(--accent-red);
+            text-align: center;
+            padding: 40px;
+            background: rgba(248, 81, 73, 0.1);
+            border-radius: var(--radius);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            
+            .chart-container {
+                padding: 14px;
+            }
+            
+            .chart-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .chart-wrapper {
+                height: 220px;
+            }
+            
+            #hashrateChart, #difficultyChart {
+                height: 220px !important;
+            }
+            
+            .stats-row {
+                gap: 10px;
+            }
+            
+            .stat-box {
+                padding: 12px 16px;
+                min-width: 80px;
+            }
+            
+            .stat-box .value {
+                font-size: 16px;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <h1>📊 Network Hashrate</h1>
+        <a href="/" class="back-link">← Back to Dashboard</a>
+    </header>
+    
+    <div class="chart-container">
+        <div class="chart-header">
+            <div class="chart-title">CKB Network Hashrate (30 Days)</div>
+            <button class="refresh-btn" id="refreshBtn" onclick="loadData()">↻ Refresh</button>
+        </div>
+        
+        <div id="hashrateLoading" class="loading">Loading hashrate data...</div>
+        <div class="chart-wrapper" id="hashrateWrapper" style="display:none;">
+            <canvas id="hashrateChart"></canvas>
+        </div>
+        <div id="hashrateError" class="error" style="display:none;">Failed to load hashrate data</div>
+        
+        <div class="stats-row" id="hashrateStats">
+            <div class="stat-box">
+                <div class="label">Current</div>
+                <div class="value" id="currentHashrate">--</div>
+            </div>
+            <div class="stat-box">
+                <div class="label">30d Average</div>
+                <div class="value" id="avgHashrate">--</div>
+            </div>
+            <div class="stat-box">
+                <div class="label">Peak</div>
+                <div class="value" id="peakHashrate">--</div>
+            </div>
+        </div>
+        
+        <div class="data-info" id="hashrateInfo"></div>
+    </div>
+    
+    <div class="chart-container">
+        <div class="chart-header">
+            <div class="chart-title">CKB Network Difficulty (30 Days)</div>
+        </div>
+        
+        <div id="difficultyLoading" class="loading">Loading difficulty data...</div>
+        <div class="chart-wrapper" id="difficultyWrapper" style="display:none;">
+            <canvas id="difficultyChart"></canvas>
+        </div>
+        <div id="difficultyError" class="error" style="display:none;">Failed to load difficulty data</div>
+        
+        <div class="stats-row" id="difficultyStats">
+            <div class="stat-box">
+                <div class="label">Current</div>
+                <div class="value" id="currentDifficulty">--</div>
+            </div>
+            <div class="stat-box">
+                <div class="label">30d Average</div>
+                <div class="value" id="avgDifficulty">--</div>
+            </div>
+            <div class="stat-box">
+                <div class="label">Peak</div>
+                <div class="value" id="peakDifficulty">--</div>
+            </div>
+        </div>
+        
+        <div class="data-info" id="difficultyInfo"></div>
+    </div>
+    
+    <script>
+        let hashrateChart = null;
+        let difficultyChart = null;
+        
+        function formatHashrate(h) {
+            if (!h && h !== 0) return '--';
+            // API returns H/s - convert to appropriate unit
+            // Current network: ~109 PH/s (divide H/s by 1e12)
+            if (h >= 1e12) {
+                return (h / 1e12).toFixed(2) + ' PH/s';
+            }
+            if (h >= 1e9) return (h / 1e9).toFixed(2) + ' TH/s';
+            if (h >= 1e6) return (h / 1e6).toFixed(2) + ' GH/s';
+            if (h >= 1e3) return (h / 1e3).toFixed(2) + ' MH/s';
+            return h.toFixed(2) + ' H/s';
+        }
+        
+        function formatDifficulty(d) {
+            if (!d && d !== 0) return '--';
+            // Use standard hashrate units: EH (Exahash), PH (Petahash), TH (Terahash), etc.
+            if (d >= 1e18) return (d / 1e18).toFixed(2) + ' EH';
+            if (d >= 1e15) return (d / 1e15).toFixed(2) + ' PH';
+            if (d >= 1e12) return (d / 1e12).toFixed(2) + ' TH';
+            if (d >= 1e9) return (d / 1e9).toFixed(2) + ' GH';
+            return (d / 1e6).toFixed(2) + ' MH';
+        }
+        
+        function setLoading(loading) {
+            const btn = document.getElementById('refreshBtn');
+            if (loading) {
+                btn.disabled = true;
+                btn.classList.add('spinning');
+                btn.innerHTML = ' Loading...';
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('spinning');
+                btn.innerHTML = '↻ Refresh';
+            }
+        }
+        
+        async function fetchWithTimeout(url, timeout = 10000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            try {
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(id);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                clearTimeout(id);
+                throw error;
+            }
+        }
+        
+        async function loadData() {
+            setLoading(true);
+            
+            // Show loading states
+            document.getElementById('hashrateLoading').style.display = 'flex';
+            document.getElementById('hashrateWrapper').style.display = 'none';
+            document.getElementById('hashrateError').style.display = 'none';
+            document.getElementById('difficultyLoading').style.display = 'flex';
+            document.getElementById('difficultyWrapper').style.display = 'none';
+            document.getElementById('difficultyError').style.display = 'none';
+            
+            try {
+                const [currentData, hashrateData, difficultyData] = await Promise.all([
+                    fetchWithTimeout('/api/network/current').catch(e => {
+                        console.error('Current stats fetch failed:', e);
+                        return { error: e.message };
+                    }),
+                    fetchWithTimeout('/api/network/hashrate').catch(e => { 
+                        console.error('Hashrate fetch failed:', e);
+                        return { error: e.message }; 
+                    }),
+                    fetchWithTimeout('/api/network/difficulty').catch(e => { 
+                        console.error('Difficulty fetch failed:', e);
+                        return { error: e.message }; 
+                    })
+                ]);
+                
+                // Update real-time current stats
+                if (!currentData.error && currentData.hash_rate) {
+                    document.getElementById('currentHashrate').textContent = formatHashrate(currentData.hash_rate);
+                    document.getElementById('currentDifficulty').textContent = formatDifficulty(currentData.current_difficulty);
+                }
+                
+                renderHashrateChart(hashrateData);
+                renderDifficultyChart(difficultyData);
+                
+            } catch (error) {
+                console.error('Unexpected error:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        function renderHashrateChart(data) {
+            document.getElementById('hashrateLoading').style.display = 'none';
+            
+            if (data.error || !data || data.length === 0) {
+                document.getElementById('hashrateError').style.display = 'block';
+                document.getElementById('hashrateStats').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('hashrateWrapper').style.display = 'block';
+            document.getElementById('hashrateStats').style.display = 'flex';
+            
+            // Use last 30 days
+            const recent = data.slice(-30);
+            
+            const labels = recent.map(d => {
+                const date = new Date(d.date);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            });
+            
+            const values = recent.map(d => d.avgHashRate);
+            
+            const avg = values.reduce((a, b) => a + b, 0) / values.length;
+            const peak = Math.max(...values);
+            
+            // Current is now set from real-time /api/network/current in loadData()
+            document.getElementById('avgHashrate').textContent = formatHashrate(avg);
+            document.getElementById('peakHashrate').textContent = formatHashrate(peak);
+            
+            const oldestDate = recent[0]?.date || '--';
+            const newestDate = recent[recent.length - 1]?.date || '--';
+            document.getElementById('hashrateInfo').textContent = 
+                `Showing ${recent.length} days • ${oldestDate} to ${newestDate}`;
+            
+            const ctx = document.getElementById('hashrateChart').getContext('2d');
+            
+            if (hashrateChart) {
+                hashrateChart.destroy();
+            }
+            
+            // Create gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+            gradient.addColorStop(0, 'rgba(88, 166, 255, 0.3)');
+            gradient.addColorStop(1, 'rgba(88, 166, 255, 0.02)');
+            
+            hashrateChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Network Hashrate',
+                        data: values,
+                        borderColor: '#58a6ff',
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#58a6ff',
+                        pointBorderColor: '#1a1f2e',
+                        pointBorderWidth: 2,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 600, easing: 'easeOutQuart' },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1e2433',
+                            titleColor: '#e6edf3',
+                            bodyColor: '#e6edf3',
+                            borderColor: '#30363d',
+                            borderWidth: 1,
+                            padding: 12,
+                            callbacks: {
+                                label: ctx => `Hashrate: ${formatHashrate(ctx.raw)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { 
+                                color: 'rgba(48, 54, 61, 0.5)',
+                                drawBorder: false
+                            },
+                            ticks: { 
+                                color: '#8b949e',
+                                maxTicksLimit: 10,
+                                maxRotation: 0
+                            }
+                        },
+                        y: {
+                            grid: { 
+                                color: 'rgba(48, 54, 61, 0.5)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#8b949e',
+                                callback: v => formatHashrate(v),
+                                maxTicksLimit: 6
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderDifficultyChart(data) {
+            document.getElementById('difficultyLoading').style.display = 'none';
+            
+            if (data.error || !data || data.length === 0) {
+                document.getElementById('difficultyError').style.display = 'block';
+                document.getElementById('difficultyStats').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('difficultyWrapper').style.display = 'block';
+            document.getElementById('difficultyStats').style.display = 'flex';
+            
+            const recent = data.slice(-30);
+            
+            const labels = recent.map(d => {
+                const date = new Date(d.date);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            });
+            
+            const values = recent.map(d => d.avgDifficulty);
+            
+            const avg = values.reduce((a, b) => a + b, 0) / values.length;
+            const peak = Math.max(...values);
+            
+            // Current is now set from real-time /api/network/current in loadData()
+            document.getElementById('avgDifficulty').textContent = formatDifficulty(avg);
+            document.getElementById('peakDifficulty').textContent = formatDifficulty(peak);
+            
+            const oldestDate = recent[0]?.date || '--';
+            const newestDate = recent[recent.length - 1]?.date || '--';
+            document.getElementById('difficultyInfo').textContent = 
+                `Showing ${recent.length} days • ${oldestDate} to ${newestDate}`;
+            
+            const ctx = document.getElementById('difficultyChart').getContext('2d');
+            
+            if (difficultyChart) {
+                difficultyChart.destroy();
+            }
+            
+            // Create gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+            gradient.addColorStop(0, 'rgba(210, 153, 34, 0.3)');
+            gradient.addColorStop(1, 'rgba(210, 153, 34, 0.02)');
+            
+            difficultyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Network Difficulty',
+                        data: values,
+                        borderColor: '#d29922',
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#d29922',
+                        pointBorderColor: '#1a1f2e',
+                        pointBorderWidth: 2,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 600, easing: 'easeOutQuart' },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1e2433',
+                            titleColor: '#e6edf3',
+                            bodyColor: '#e6edf3',
+                            borderColor: '#30363d',
+                            borderWidth: 1,
+                            padding: 12,
+                            callbacks: {
+                                label: ctx => `Difficulty: ${formatDifficulty(ctx.raw)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { 
+                                color: 'rgba(48, 54, 61, 0.5)',
+                                drawBorder: false
+                            },
+                            ticks: { 
+                                color: '#8b949e',
+                                maxTicksLimit: 10,
+                                maxRotation: 0
+                            }
+                        },
+                        y: {
+                            grid: { 
+                                color: 'rgba(48, 54, 61, 0.5)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#8b949e',
+                                callback: v => formatDifficulty(v),
+                                maxTicksLimit: 6
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
