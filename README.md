@@ -143,6 +143,47 @@ MinerDashboard/
 | `GET /api/market/data` | Market cap, volume, price |
 | `GET /api/earnings` | Daily earnings history |
 
+## Adapting for Other Goldshell CKB Miners
+
+This dashboard was built for the Goldshell CK-Box series, but may work with other Goldshell CKB miners with minor adjustments.
+
+### How Miner Polling Works
+
+The dashboard polls each miner at `http://{ip}/mcb/status`. The CK-Box returns JSON like:
+
+```json
+{
+  "hw_errors": 0,
+  "temperatures": [58, 60, 57],
+  "chain_count": 4,
+  "hashrate": ["1.15 TH/s", "1.14 TH/s", "1.16 TH/s", "1.15 TH/s"]
+}
+```
+
+Other Goldshell miners may return similar or identical JSON at the same endpoint. Try it and see.
+
+### Steps to Adapt
+
+1. **Find your miner's IP** — check your router or use a network scanner
+2. **Test the API** — visit `http://{miner_ip}/mcb/status` in a browser
+3. **Update `config.json`** — add your miner with its IP
+4. **If the endpoint differs** — edit `miner_monitor.py`:
+   - `poll_miner()` — change the endpoint from `/mcb/status` to your miner's endpoint
+   - `fetch_json()` — adjust URL formatting if needed
+   - Field mappings — the `hw_errors`, `temperatures`, `pools` fields may have different names
+5. **If it doesn't work** — check the dashboard network tab for errors and inspect what the miner actually returns
+
+### Known Compatible Models
+
+| Model | Status | Notes |
+|-------|--------|-------|
+| Goldshell CK-Box | ✅ Tested | Primary development target |
+| Goldshell CK5 | Likely | Same `/mcb/status` endpoint expected |
+
+### Pool Data Works for All Miners
+
+Even if local miner polling doesn't work, **2miners pool data works with any CKB miner**. Your wallet address on 2miners tracks all miners mining to it — hashrate, earnings, blocks, and payments all show correctly regardless of hardware.
+
 ## License
 
 MIT
