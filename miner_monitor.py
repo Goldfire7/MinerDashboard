@@ -48,7 +48,16 @@ def load_config():
             config = json.load(f)
     else:
         config = {"miners": [], "poll_interval": 30}
-    logger.info(f"Loaded config: {len(config.get('miners', []))} miners")
+    # Env var overrides — useful on cloud platforms like Render
+    import os
+    if os.environ.get("WALLET_ADDRESS"):
+        config["wallet"] = os.environ["WALLET_ADDRESS"]
+    if os.environ.get("POLL_INTERVAL"):
+        try:
+            config["poll_interval"] = int(os.environ["POLL_INTERVAL"])
+        except ValueError:
+            pass
+    logger.info(f"Loaded config: {len(config.get('miners', []))} miners, wallet: {config.get('wallet', 'not set')[:10]}...")
 
 
 def save_config():
