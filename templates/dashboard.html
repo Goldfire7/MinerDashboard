@@ -46,10 +46,6 @@
             gap: 16px;
         }
         
-        .header-left {
-            justify-self: start;
-        }
-        
         .header-center {
             text-align: center;
             justify-self: center;
@@ -68,34 +64,6 @@
             box-shadow: var(--shadow);
             text-align: center;
             min-width: 140px;
-        }
-        
-        .header-card .label {
-            color: var(--text-secondary);
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-        }
-        
-        .header-card .links {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        
-        .header-card .links a {
-            color: var(--accent-blue);
-            text-decoration: none;
-            font-size: 12px;
-            font-weight: 500;
-            padding: 4px 8px;
-            border-radius: var(--radius-sm);
-            transition: all 0.2s;
-        }
-        
-        .header-card .links a:hover {
-            background: rgba(88, 166, 255, 0.1);
         }
         
         /* Navigation Card */
@@ -837,7 +805,7 @@
                 margin-bottom: 14px;
             }
             
-            .header-left, .header-right {
+            .header-right {
                 justify-self: center;
                 width: 100%;
             }
@@ -853,13 +821,13 @@
                 padding: 10px 12px;
             }
             
-            .header-card .links, .nav-card .links {
+            .nav-card .links {
                 flex-direction: row;
                 flex-wrap: wrap;
                 justify-content: center;
             }
             
-            .header-card .links a, .nav-card .links a {
+            .nav-card .links a {
                 font-size: 11px;
                 padding: 4px 6px;
             }
@@ -1019,7 +987,6 @@
             }
             
             /* hide header nav on mobile */
-            .header-left,
             .header-right {
                 display: none;
             }
@@ -1145,7 +1112,7 @@
                 justify-content: center;
             }
             
-            .header-card .links a, .nav-card .links a {
+            .nav-card .links a {
                 min-height: 36px;
             }
         }
@@ -1158,17 +1125,6 @@
     </div>
     
     <header>
-        <div class="header-left">
-            <div class="header-card">
-                <div class="label">Links</div>
-                <div class="links">
-                    <a href="https://whattomine.com/" target="_blank">WhatToMine</a>
-                    <a href="https://explorer.nervos.org/" target="_blank">CKB Explorer</a>
-                    <a href="https://ckb.2miners.com/account/ckb1qyqfv9d5vr7x5ss8wuv6a7pyuazwyltjgh7qdvcyqs#rewards" target="_blank">Nervos Pool</a>
-                    <a href="https://explorer.nervos.org/address/ckb1qyqfv9d5vr7x5ss8wuv6a7pyuazwyltjgh7qdvcyqs" target="_blank">My CKB Address</a>
-                </div>
-            </div>
-        </div>
         <div class="header-center">
             <h1>⛏️ CK-Box Dashboard</h1>
             <p class="subtitle">
