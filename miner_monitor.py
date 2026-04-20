@@ -647,7 +647,14 @@ def index():
 
 @app.route('/api/status')
 def api_status():
-    """JSON status for all miners."""
+    # Lazy: fetch pool data if not yet loaded (gunicorn doesn't run main())
+    if not pool_data.get("wallet"):
+        wallet = config.get("wallet")
+        if wallet:
+            stats = fetch_pool_stats(wallet)
+            if stats:
+                pool_data.update(stats)
+    
     # Get workers from pool data
     workers = pool_data.get("workers", {})
     
