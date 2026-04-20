@@ -4,6 +4,31 @@ All notable changes to the CKB Miner Dashboard are logged here.
 
 ---
 
+## [Unreleased] - 2026-04-20
+
+### Added
+- **"Last Share" per miner** — Shows time since each miner last submitted a share to the pool, pulled from 2miners `lastBeat`. Live-updates every second. Color-coded: green <1m, yellow <5m, red >5m.
+- **README section: Adapting for other Goldshell CKB miners** — Documents the `/mcb/status` endpoint, how to adapt the miner config, and notes that pool data works for any CKB miner.
+
+### Changed
+- **Removed Temperature card from miner cards** — CK-Box doesn't expose temperature data via its API, card always showed `--`. Removed dead code and CSS.
+- **load_config() called on module import** — Fixes gunicorn/WSGI deployment where `main()` never runs.
+- **Lazy pool data fetch on first API call** — Pool data is now fetched on demand rather than only at startup, fixing cloud deployments.
+- **WALLET_ADDRESS env var override** — Wallet address can be set via environment variable (useful for cloud platforms).
+- **Dashboard_Run.sh made portable** — Uses `$(dirname "$0")` instead of hardcoded path.
+- **README cleaned up** — Removed Render deployment docs, hidden real wallet address, hidden miner IPs, updated screenshots.
+
+### Removed
+- **render.yaml** — Render deployment not practical without access to local miners. Tailscale Funnel is the recommended remote access method.
+- **gunicorn from requirements.txt** — Flask dev server is sufficient for local/self-hosted use.
+- **Old log files** — `miner.log` and `miner_monitor.log` no longer written.
+
+### Fixed
+- **GitHub repo setup** — Config, logs, and data files are properly gitignored.
+- **Module-level config initialization** — Config loads on import for WSGI compatibility.
+
+---
+
 ## [Unreleased] - 2026-04-19
 
 ### Added

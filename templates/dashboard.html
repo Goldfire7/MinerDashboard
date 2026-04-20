@@ -522,31 +522,6 @@
             margin-top: 2px;
         }
         
-        /* Temperature Display */
-        .temp-display {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .temp-display .temp-bar {
-            width: 40px;
-            height: 4px;
-            background: var(--bg-secondary);
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        
-        .temp-display .temp-bar .fill {
-            height: 100%;
-            border-radius: 2px;
-            transition: width 0.3s;
-        }
-        
-        .temp-display .temp-bar .fill.good { background: var(--accent-green); }
-        .temp-display .temp-bar .fill.warn { background: var(--accent-yellow); }
-        .temp-display .temp-bar .fill.bad { background: var(--accent-red); }
-        
         /* Pool Section */
         .pool-section {
             background: var(--bg-primary);
@@ -1401,21 +1376,15 @@
             if (hours > 0) return `${hours}h ${mins}m`;
             return `${mins}m`;
         }
-        
-        function formatTemperature(temp, target) {
-            if (temp === null || temp === undefined) return '--';
-            const t = parseFloat(temp);
-            const targetTemp = target ? parseFloat(target) : 75;
-            const percent = Math.min(100, (t / targetTemp) * 100);
-            let colorClass = 'good';
-            if (t >= targetTemp - 5) colorClass = 'warn';
-            if (t >= targetTemp) colorClass = 'bad';
-            
-            return {
-                text: `${t.toFixed(0)}°C`,
-                percent: percent,
-                class: colorClass
-            };
+
+        function formatTimeSince(timestamp) {
+            if (!timestamp || timestamp <= 0) return '--';
+            const seconds = Math.floor(Date.now() / 1000) - timestamp;
+            if (seconds < 0) return '--';
+            if (seconds < 60) return `${seconds}s`;
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+            return `${Math.floor(seconds / 86400)}d`;
         }
         
         function showError(message) {
@@ -2048,36 +2017,6 @@
                 const setting = miner.setting || {};
                 const status = miner.status || {};
                 
-                // Extract temperatures from status - handle multiple field names
-                let temps = [];
-                if (status.temperatures && Array.isArray(status.temperatures) && status.temperatures.length > 0) {
-                    temps = status.temperatures;
-                } else if (status.temp && Array.isArray(status.temp) && status.temp.length > 0) {
-                    temps = status.temp;
-                } else if (status.chip_temp && Array.isArray(status.chip_temp) && status.chip_temp.length > 0) {
-                    temps = status.chip_temp;
-                } else if (status.chips_temp && Array.isArray(status.chips_temp) && status.chips_temp.length > 0) {
-                    temps = status.chips_temp;
-                } else if (typeof status.temperature === 'number') {
-                    temps = [status.temperature];
-                } else if (typeof status.board_temp === 'number') {
-                    temps = [status.board_temp];
-                } else if (status.max_temp && typeof status.max_temp === 'number') {
-                    temps = [status.max_temp];
-                } else if (status.avg_temp && typeof status.avg_temp === 'number') {
-                    temps = [status.avg_temp];
-                }
-                
-                // Calculate average temperature from all chip temps
-                let avgTemp = null;
-                if (temps.length > 0) {
-                    const sum = temps.reduce((a, b) => a + (parseFloat(b) || 0), 0);
-                    avgTemp = (sum / temps.length).toFixed(0);
-                }
-                
-                const tempTarget = setting.temp_targets?.[0] || setting.temp_target || 75;
-                const tempDisplay = avgTemp !== null ? formatTemperature(parseFloat(avgTemp), tempTarget) : null;
-                
                 // Calculate reject rate
                 const totalShares = (miner.shares_valid || 0) + (miner.shares_stale || 0) + (miner.shares_invalid || 0);
                 const rejectRate = totalShares > 0 
@@ -2086,6 +2025,7 @@
                 
                 const card = document.createElement('div');
                 card.className = 'miner-card' + (miner.online ? '' : ' offline');
+                const cardId = 'miner-' + miner.name.replace(/[^a-zA-Z0-9]/g, '_');
                 
                 card.innerHTML = `
                     <div class="miner-header">
@@ -2108,20 +2048,6 @@
                                 ${miner.avg_hashrate ? `<div class="sub">avg: ${formatHashrate(miner.avg_hashrate)}</div>` : ''}
                             </div>
                             <div class="miner-stat">
-                                <div class="label">Temperature</div>
-                                <div class="value ${tempDisplay?.class || ''}">
-                                    ${tempDisplay ? `
-                                        <div class="temp-display">
-                                            ${tempDisplay.text}
-                                            <div class="temp-bar">
-                                                <div class="fill ${tempDisplay.class}" style="width: ${tempDisplay.percent}%"></div>
-                                            </div>
-                                        </div>
-                                    ` : '<span style="color: var(--text-muted);">--</span>'}
-                                </div>
-                                ${tempDisplay ? `<div class="sub">target: ${tempTarget}°C</div>` : '<div class="sub">no temp data</div>'}
-                            </div>
-                            <div class="miner-stat">
                                 <div class="label">Firmware / Model</div>
                                 <div class="value" style="font-size: 16px; color: var(--text-primary);">${escapeHtml(miner.firmware || '--')}</div>
                                 <div class="sub">${escapeHtml(miner.model || '--')}</div>
@@ -2137,6 +2063,11 @@
                                     ${(miner.shares_stale || 0).toLocaleString()} / ${(miner.shares_invalid || 0).toLocaleString()}
                                 </div>
                                 <div class="sub">${rejectRate}% reject</div>
+                            </div>
+                            <div class="miner-stat">
+                                <div class="label">Last Share</div>
+                                <div class="value" id="last-share-${cardId}">--</div>
+                                <div class="sub">ago</div>
                             </div>
                             <div class="miner-stat">
                                 <div class="label">Uptime</div>
@@ -2174,6 +2105,7 @@
                         </div>
                     </div>
                 `;
+                card._lastBeat = miner.last_beat || null;
                 grid.appendChild(card);
             });
         }
@@ -2194,6 +2126,7 @@
             countdownTimer = setInterval(() => {
                 countdown--;
                 updateCountdown();
+                updateLastShareTimers();
             }, 1000);
             
             refreshTimer = setTimeout(() => { loadData(); }, CONFIG.REFRESH_INTERVAL);
@@ -2202,6 +2135,28 @@
         function updateCountdown() {
             const el = document.getElementById('nextRefresh');
             if (el) el.textContent = countdown + 's';
+        }
+
+        function updateLastShareTimers() {
+            // Find all miner cards and update their Last Share timer
+            const cards = document.querySelectorAll('.miner-card');
+            cards.forEach(card => {
+                const id = card.querySelector('[id^="last-share-"]');
+                if (!id) return;
+                // Get the last_beat from the data attribute we stored on the card
+                const lastBeat = card._lastBeat;
+                if (!lastBeat || lastBeat <= 0) {
+                    id.textContent = '--';
+                    return;
+                }
+                const ago = formatTimeSince(lastBeat);
+                id.textContent = ago;
+                // Color: green <1m, yellow <5m, red >5m
+                if (ago.endsWith('s') || ago.endsWith('m')) {
+                    const mins = ago.endsWith('s') ? 0 : parseInt(ago);
+                    id.style.color = mins < 1 ? 'var(--accent-green)' : mins < 5 ? 'var(--accent-yellow)' : 'var(--accent-red)';
+                }
+            });
         }
         
         // Highlight active tab

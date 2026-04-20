@@ -701,6 +701,7 @@ def api_status():
             "shares_stale": worker_data.get("sharesStale", 0),
             "shares_invalid": worker_data.get("sharesInvalid", 0),
             "worker_offline": worker_data.get("offline", False),
+            "last_beat": worker_data.get("lastBeat"),
             "uptime_seconds": current_uptime
         }
         combined["miners"].append(miner_summary)
