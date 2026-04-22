@@ -4,6 +4,22 @@ All notable changes to the CKB Miner Dashboard are logged here.
 
 ---
 
+## [Unreleased] - 2026-04-22
+
+### Added
+- **7d Earned card** — displays actual 7-day earnings from 2miners `sumrewards` API (interval 604800), placed between 24h and 30d cards. Shows CKB + USD value with same color styling as other earnings cards.
+
+### Changed
+- **Pool Hashrate** card (renamed from "Total Hashrate") — now explicitly shows the pool's `currentHashrate` (live hashrate reported by the pool, summed across all workers) rather than being ambiguous about the source.
+
+### Removed
+- **Daily Est. card** — calculation was unreliable and produced incorrect values. Redundant with the 24h Earned card which shows actual earnings.
+
+### Fixed
+- **Duplicate `ckbPrice` variable declaration** — `ckbPrice` was declared twice in the same scope (once in the 24h block and again in the daily est block), causing a JavaScript `SyntaxError`. Removed the duplicate declaration.
+
+---
+
 ## [Unreleased] - 2026-04-20
 
 ### Added

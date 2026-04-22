@@ -6,6 +6,7 @@ Polls miners for hashrate and status data, serves dashboard.
 
 import json
 import logging
+import math
 import time
 import http.client
 from datetime import datetime, timezone
@@ -689,8 +690,8 @@ def api_status():
             "online": data["online"],
             "model": data.get("status", {}).get("model", "Unknown"),
             "firmware": data.get("status", {}).get("firmware", "Unknown"),
-            "current_hashrate": data.get("current_hashrate"),
-            "avg_hashrate": data.get("avg_hashrate"),
+            "current_hashrate": int(data.get("current_hashrate", 0) * 1e6) if data.get("current_hashrate") else 0,
+            "avg_hashrate": int(data.get("avg_hashrate", 0) * 1e6) if data.get("avg_hashrate") else 0,
             "hw_errors": data.get("hw_errors", 0),
             "pools": data.get("pools", []),
             "setting": data.get("setting", {}),
@@ -706,15 +707,34 @@ def api_status():
         }
         combined["miners"].append(miner_summary)
         
-        if data["online"]:
-            if data.get("current_hashrate"):
-                total_hashrate += data["current_hashrate"]
-            if data.get("avg_hashrate"):
-                total_avg_hashrate += data["avg_hashrate"]
+        # Use pool workers' hashrate for accurate totals
+    # hr = current hashrate in H/s, hr2 = variance * 1e6 in (MH/s)^2
+    # avg hashrate = sqrt(hr2) * 1e6 H/s
+    workers = pool_data.get("workers", {})
+    total_hashrate = sum(w.get("hr", 0) for w in workers.values())
+    total_avg_hashrate = sum(math.sqrt(w.get("hr2", 0)) * 1e6 if w.get("hr2") else w.get("hr", 0) for w in workers.values())
     
     combined["total_current_hashrate"] = total_hashrate
     combined["total_avg_hashrate"] = total_avg_hashrate
     combined["pool"] = pool_data
+    
+    # Add network stats for calculator-based daily estimate
+    try:
+        net_resp = requests.get("http://localhost:5000/api/network/current", timeout=5)
+        if net_resp.status_code == 200:
+            net_data = net_resp.json()
+            combined["network_hashrate"] = net_data.get("hash_rate", 0)  # H/s
+    except:
+        pass
+    
+    # Get block reward from statistics
+    try:
+        stats_resp = requests.get("http://localhost:5000/api/statistics", timeout=5)
+        if stats_resp.status_code == 200:
+            stats_data = stats_resp.json()
+            combined["block_reward"] = stats_data.get("block_reward", 0)  # CKB
+    except:
+        pass
     
     # Calculate combined rejection rate from miner shares
     total_valid = sum(m["shares_valid"] for m in combined["miners"])
@@ -1397,3 +1417,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
