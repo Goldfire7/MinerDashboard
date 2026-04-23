@@ -37,24 +37,39 @@
             line-height: 1.5;
         }
         
-        /* Header - New layout */
+        /* Header */
         header {
-            display: grid;
-            grid-template-columns: 1fr 2fr 1fr;
-            align-items: flex-start;
-            margin-bottom: 20px;
-            gap: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding: 0 4px;
         }
         
-        .header-center {
-            text-align: center;
-            justify-self: center;
-            grid-column: 2;
+        .header-left { flex: 1; min-width: 200px; }
+        .header-right { flex-shrink: 0; }
+        
+        .header-center { display: none; } /* Hidden, title moved to header-left */
+        
+        .header-title {
+            color: var(--text-primary);
+            font-size: clamp(18px, 3vw, 24px);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
-        .header-right {
-            justify-self: end;
-            grid-column: 3;
+        .header-subtitle {
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-top: 4px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 12px;
+            align-items: center;
         }
         
         /* Header Cards */
@@ -134,26 +149,20 @@
         /* Combined Stats Grid */
         .combined-stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-            gap: 8px;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
             margin-bottom: 20px;
         }
         
         .stat-card {
-            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            background: var(--bg-secondary);
             border-radius: var(--radius);
-            padding: 4px 4px;
+            padding: 16px 12px;
             text-align: center;
             border: 1px solid var(--border);
             box-shadow: var(--shadow);
             transition: transform 0.2s, box-shadow 0.2s, border-color 0.3s;
             position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            aspect-ratio: 1 / 1;
         }
         
         .stat-card::before {
@@ -181,9 +190,7 @@
             font-size: 11px; 
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            margin-bottom: 6px;
         }
         
         .stat-card .value { 
@@ -191,11 +198,6 @@
             font-weight: 700; 
             color: var(--accent-blue); 
             line-height: 1.2;
-            letter-spacing: -0.5px;
-        }
-        }
-            margin-top: 6px;
-            font-variant-numeric: tabular-nums;
         }
         
         .stat-card .value .usd-amount {
@@ -224,7 +226,7 @@
         
         /* Shares Section */
         .shares-section {
-            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            background: var(--bg-secondary);
             border-radius: var(--radius);
             padding: 16px;
             margin-bottom: 16px;
@@ -292,7 +294,7 @@
         
         /* Payments Section */
         .payments-section {
-            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            background: var(--bg-secondary);
             border-radius: var(--radius);
             padding: 16px;
             margin-bottom: 16px;
@@ -367,23 +369,12 @@
         }
         
         .miner-card {
-            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            background: var(--bg-secondary);
             border-radius: var(--radius);
             border: 1px solid var(--border);
             box-shadow: var(--shadow);
             overflow: hidden;
             transition: transform 0.2s, box-shadow 0.2s, border-color 0.3s;
-            position: relative;
-        }
-        
-        .miner-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
         }
         
         .miner-card:hover {
@@ -406,7 +397,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 14px 16px;
-            background: linear-gradient(90deg, #21262d 0%, #1c2128 100%);
+            background: var(--bg-tertiary);
             border-bottom: 1px solid var(--border);
         }
         
@@ -550,7 +541,7 @@
         
         /* Earnings Chart Section */
         .earnings-section {
-            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            background: var(--bg-secondary);
             border-radius: var(--radius);
             padding: 20px;
             margin-bottom: 20px;
@@ -592,9 +583,9 @@
         
         /* Hashrate Chart Section */
         .hashrate-section {
-            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            background: var(--bg-secondary);
             border-radius: var(--radius);
-            padding: 16px 14px;
+            padding: 16px;
             margin-bottom: 20px;
             border: 1px solid var(--border);
             box-shadow: var(--shadow);
@@ -777,15 +768,15 @@
         
         /* Error State */
         .error-banner {
-            background: rgba(248, 81, 73, 0.1);
-            border: 1px solid rgba(248, 81, 73, 0.3);
+            background: var(--accent-red);
+            color: white;
             border-radius: var(--radius);
             padding: 12px 16px;
             margin-bottom: 16px;
-            color: var(--accent-red);
             display: none;
             align-items: center;
             gap: 8px;
+            font-weight: 500;
         }
         
         .error-banner.visible {
@@ -1154,13 +1145,13 @@
     </div>
     
     <header>
-        <div class="header-center">
-            <h1>⛏️ CK-Box Dashboard ⛏️</h1>
-            <p class="subtitle">
+        <div class="header-left">
+            <div class="header-title">⛏️ CK-Box Dashboard</div>
+            <div class="header-subtitle">
                 <span class="dot" id="statusDot"></span>
                 <span id="headerNetwork">--</span>
                 <span id="headerNetDiff">--</span>
-            </p>
+            </div>
         </div>
         <div class="header-right">
             <div class="nav-card">

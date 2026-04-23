@@ -7,11 +7,17 @@ All notable changes to the CKB Miner Dashboard are logged here.
 ## [Unreleased] - 2026-04-23
 
 ### Fixed
-- **Miner hashrate scaling bug** — `api_status()` was multiplying miner `current_hashrate` and `avg_hashrate` by `×1e12` (TH/s scale) when the raw value from `/cpb/hshistory` is already H/s. Resulted in ~1,100,000 TH/s displayed for 1.1 TH/s miners. Fixed to `×1e6`.
-- **Missing `network_diff` in API response** — `api_status()` was returning `network_hashrate` but not `network_diff`. Dashboard header expected both `Net:` and `Diff:` values. Added `combined["network_diff"] = net_data.get("current_difficulty", 0)`.
-- **Missing `_network_current_cache` declaration** — During cleanup, the `_network_current_cache` and `_network_current_fetch_time` variables for the `/api/network/current` endpoint were accidentally removed, causing a `NameError` and 500 errors. Re-added the declarations.
+- **Miner hashrate scaling bug** — `api_status()` was multiplying miner `current_hashrate` and `avg_hashrate` by `×1e12` when raw value from `/cpb/hshistory` is H/s. Resulted in ~1,100,000 TH/s displayed for 1.1 TH/s miners. Fixed to `×1e6`.
+- **Missing `network_diff` in API response** — Added `combined["network_diff"]` so header shows both `Net:` and `Diff:` values.
+- **Missing `_network_current_cache` declaration** — Caused `NameError` and 500 errors on `/api/network/current`. Re-added the variable declarations.
+- **CSS orphan block removed** — Fixed duplicate `.stat-card .value` closing brace that was breaking CSS rules.
 
 ### Changed
+- **Header layout simplified** — Replaced 3-column grid with flexbox (title left, nav right). Removed `header-center` div and centered title styling.
+- **Stat cards refactored** — Removed square `aspect-ratio` constraint, increased padding and min-width to 140px, removed squeezing `letter-spacing`.
+- **All section backgrounds flattened** — Removed `linear-gradient` backgrounds on stat cards, miner cards, shares/earnings/hashrate/payments sections. Now uses flat `var(--bg-secondary)` for cleaner, more modern appearance.
+- **Error banner styled** — Now solid red with white text (was translucent outline).
+- **Removed pseudo-element shine effects** — Cleaned up `.miner-card::before` and similar decorative elements that added visual noise.
 - **Removed unused `math` import** — Replaced with targeted `from math import sqrt` to avoid importing the entire module.
 - **Cleaned up duplicate cache declarations** — Removed redundant `_network_current_cache` / `NETWORK_CURRENT_CACHE_SECONDS` declarations that were causing conflicts.
 
