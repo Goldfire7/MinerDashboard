@@ -6,9 +6,9 @@ Polls miners for hashrate and status data, serves dashboard.
 
 import json
 import logging
-import math
 import time
 import http.client
+from math import sqrt
 from datetime import datetime, timezone
 from flask import Flask, render_template, jsonify, request
 import requests
@@ -350,10 +350,10 @@ _network_hashrate_cache = None
 _network_hashrate_fetch_time = 0
 NETWORK_HASHRATE_CACHE_SECONDS = 3600  # Cache for 1 hour
 
-# Network difficulty cache
-_network_difficulty_cache = None
-_network_difficulty_fetch_time = 0
-NETWORK_DIFFICULTY_CACHE_SECONDS = 3600  # Cache for 1 hour
+# Network current cache (for /api/network/current endpoint)
+_network_current_cache = None
+_network_current_fetch_time = 0
+NETWORK_CURRENT_CACHE_SECONDS = 60  # Cache for 1 minute
 
 def fetch_ckb_price():
     """Fetch CKB price from CoinGecko with rate limiting."""
@@ -712,7 +712,7 @@ def api_status():
     # avg hashrate = sqrt(hr2) * 1e6 H/s
     workers = pool_data.get("workers", {})
     total_hashrate = sum(w.get("hr", 0) for w in workers.values())
-    total_avg_hashrate = sum(math.sqrt(w.get("hr2", 0)) * 1e6 if w.get("hr2") else w.get("hr", 0) for w in workers.values())
+    total_avg_hashrate = sum(sqrt(w.get("hr2", 0)) * 1e6 if w.get("hr2") else w.get("hr", 0) for w in workers.values())
     
     combined["total_current_hashrate"] = total_hashrate
     combined["total_avg_hashrate"] = total_avg_hashrate
@@ -724,6 +724,7 @@ def api_status():
         if net_resp.status_code == 200:
             net_data = net_resp.json()
             combined["network_hashrate"] = net_data.get("hash_rate", 0)  # H/s
+            combined["network_diff"] = net_data.get("current_difficulty", 0)  # raw difficulty
     except:
         pass
     
@@ -974,11 +975,6 @@ BLOCKS_CACHE_SECONDS = 60  # Cache for 1 minute
 _statistics_cache = None
 _statistics_fetch_time = 0
 STATISTICS_CACHE_SECONDS = 60  # Cache for 1 minute
-
-# Network current cache (separate from statistics cache)
-_network_current_cache = None
-_network_current_fetch_time = 0
-NETWORK_CURRENT_CACHE_SECONDS = 60  # Cache for 1 minute
 
 
 def fetch_ckb_price_history(days=30):
