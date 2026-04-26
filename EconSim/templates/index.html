@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EconSim — Economic Dashboard</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #0a0f1a; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; font-size: 13px; }
+
+        /* Header */
+        .hdr { background: linear-gradient(135deg, #0f172a 0%, #1a2332 100%); border-bottom: 1px solid #1e3a5f; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+        .hdr-left { display: flex; align-items: center; gap: 12px; }
+        .logo { font-size: 18px; font-weight: 800; color: #10b981; letter-spacing: -0.5px; }
+        .logo span { color: #64748b; font-weight: 400; font-size: 11px; margin-left: 6px; }
+        .status-pill { display: flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; background: #1e293b; font-size: 11px; }
+        .dot { width: 7px; height: 7px; border-radius: 50%; }
+        .dot-green { background: #10b981; box-shadow: 0 0 6px #10b981; }
+        .dot-gray { background: #475569; }
+        .tick-badge { background: #1e3a5f; color: #60a5fa; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; font-family: monospace; }
+
+        .hdr-right { display: flex; align-items: center; gap: 8px; }
+        .btn { padding: 6px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; font-size: 12px; transition: opacity 0.15s; }
+        .btn:hover { opacity: 0.85; }
+        .btn-green { background: #10b981; color: white; }
+        .btn-red { background: #ef4444; color: white; }
+        .btn-yellow { background: #f59e0b; color: white; }
+        .btn-outline { background: transparent; border: 1px solid #334155; color: #94a3b8; }
+        .speed-wrap { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #64748b; }
+        input[type=range] { cursor: pointer; }
+
+        /* Main grid */
+        .main { padding: 10px; max-width: 1600px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto auto auto; gap: 8px; }
+
+        /* Stat cards */
+        .stats-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; grid-column: 1 / -1; }
+        .stat { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 10px 12px; }
+        .stat-label { color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+        .stat-value { font-size: 16px; font-weight: 700; }
+        .stat-sub { font-size: 10px; color: #475569; margin-top: 2px; }
+        .stat-good { color: #10b981; }
+        .stat-bad { color: #ef4444; }
+        .stat-warn { color: #f59e0b; }
+        .stat-neutral { color: #60a5fa; }
+
+        /* Charts row */
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; grid-column: 1 / -1; }
+        .chart-card { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 12px; }
+        .chart-title { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+        .chart-box { height: 100px; position: relative; }
+
+        /* Production chain */
+        .chain-card { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 12px; grid-column: 1 / -1; }
+        .chain-title { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+        #chain-flow { display: flex; flex-direction: column; gap: 4px; }
+        .chain-item { display: flex; align-items: center; gap: 4px; }
+        .chain-good { padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; }
+        .chain-arrow { color: #334155; font-size: 14px; }
+        .chain-badge { font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-left: 2px; }
+        .factory-badge { background: #1e3a5f; color: #60a5fa; }
+        .shop-badge { background: #064e3b; color: #10b981; }
+
+        /* Agent cards */
+        .agents-card { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 12px; grid-column: 1 / -1; }
+        .agents-title { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .agents-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .agent-card { background: #0f172a; border: 1px solid #1f2937; border-radius: 8px; padding: 10px; }
+        .agent-name { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+        .agent-type { font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
+        .agent-balance { font-size: 18px; font-weight: 700; margin: 6px 0 4px; }
+        .agent-change { font-size: 10px; }
+        .agent-change.pos { color: #10b981; }
+        .agent-change.neg { color: #ef4444; }
+        .agent-bar { height: 3px; background: #1f2937; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+        .agent-bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #10b981, #34d399); }
+        .agent-inv { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 3px; }
+
+        /* Market + Shops row */
+        .mid-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; grid-column: 1 / -1; }
+        .panel { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 12px; }
+        .panel-title { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+
+        /* Table */
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th { text-align: left; color: #475569; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #1f2937; padding: 5px 6px; font-weight: 600; }
+        td { padding: 5px 6px; border-bottom: 1px solid #0f172a; vertical-align: middle; }
+        tr:hover td { background: #162032; }
+        .price-up { color: #ef4444; }
+        .price-down { color: #10b981; }
+        .tag { display: inline-block; padding: 2px 5px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+        .ref-badge { background: #1e3a5f; color: #60a5fa; padding: 0 4px; border-radius: 3px; font-size: 9px; margin-left: 3px; }
+
+        /* Events */
+        .events-card { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 12px; grid-column: 1 / -1; }
+        .events-title { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+        .evt { padding: 6px 10px; border-radius: 5px; margin-bottom: 4px; font-size: 11px; border-left: 3px solid; background: #0a0f1a; display: flex; gap: 8px; align-items: center; }
+        .evt-pos { border-color: #10b981; }
+        .evt-neg { border-color: #ef4444; }
+        .evt-neu { border-color: #3b82f6; }
+        .evt-tick { color: #475569; font-family: monospace; font-size: 10px; min-width: 35px; }
+        .evt-text { flex: 1; }
+        .evt-pos .evt-text { color: #6ee7b7; }
+        .evt-neg .evt-text { color: #fca5a5; }
+        .evt-neu .evt-text { color: #93c5fd; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .stats-row { grid-template-columns: repeat(4, 1fr); }
+            .charts-row { grid-template-columns: 1fr 1fr; }
+            .mid-row { grid-template-columns: 1fr 1fr; }
+            .agents-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="hdr">
+    <div class="hdr-left">
+        <div class="logo">EconSim<span>Economic Dashboard</span></div>
+        <div class="status-pill">
+            <span class="dot" id="status-dot"></span>
+            <span id="status-txt">Loading...</span>
+        </div>
+        <div class="tick-badge">Tick <span id="tick-val">0</span></div>
+    </div>
+    <div class="hdr-right">
+        <div class="speed-wrap">
+            <span>Speed</span>
+            <input type="range" id="speed-slider" min="0.1" max="3" step="0.1" value="1" style="width:60px;" oninput="setSpeed(this.value)">
+            <span id="speed-val" style="width:28px;color:#94a3b8;">1.0s</span>
+        </div>
+        <button class="btn btn-green" onclick="startSim()">&#9654; Start</button>
+        <button class="btn btn-red" onclick="stopSim()">&#9632; Stop</button>
+        <button class="btn btn-outline" onclick="resetSim()" style="padding:6px 10px;">&#8635;</button>
+    </div>
+</div>
+
+<!-- Main content -->
+<div class="main">
+
+    <!-- Stats row -->
+    <div class="stats-row">
+        <div class="stat">
+            <div class="stat-label">Total Money</div>
+            <div class="stat-value stat-good" id="s-money">$0</div>
+            <div class="stat-sub" id="s-money-delta"></div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Net Profit</div>
+            <div class="stat-value" id="s-profit">$0</div>
+            <div class="stat-sub">since start</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Active Mills</div>
+            <div class="stat-value stat-neutral" id="s-factories">0</div>
+            <div class="stat-sub" id="s-factory-detail"></div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Shops</div>
+            <div class="stat-value stat-neutral" id="s-shops">0</div>
+            <div class="stat-sub">open</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Transactions</div>
+            <div class="stat-value" id="s-tx">0</div>
+            <div class="stat-sub" id="s-tx-rate"></div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">GINI</div>
+            <div class="stat-value" id="s-gini">0.000</div>
+            <div class="stat-sub">inequality</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Avg Price</div>
+            <div class="stat-value" id="s-avg">$0</div>
+            <div class="stat-sub" id="s-infl"></div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Events</div>
+            <div class="stat-value" id="s-events">0</div>
+            <div class="stat-sub">this run</div>
+        </div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="charts-row">
+        <div class="chart-card">
+            <div class="chart-title">&#9670; Money Supply</div>
+            <div class="chart-box"><canvas id="ch-money"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">&#9670; Inequality (GINI)</div>
+            <div class="chart-box"><canvas id="ch-gini"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">&#9670; Processing Rate</div>
+            <div class="chart-box"><canvas id="ch-processing"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">&#9670; Money Flow</div>
+            <div class="chart-box"><canvas id="ch-moneyflow"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Production chain flow -->
+    <div class="chain-card">
+        <div class="chain-title">Production Chain</div>
+        <div class="chain-flow" id="chain-flow"></div>
+    </div>
+
+    <!-- Agent cards -->
+    <div class="agents-card">
+        <div class="agents-title">
+            <span>Agents</span>
+            <span id="agents-summary" style="font-size:11px;color:#64748b;font-weight:400;"></span>
+        </div>
+        <div class="agents-grid" id="agents-grid"></div>
+    </div>
+
+    <!-- Market prices -->
+    <div class="panel">
+        <div class="panel-title">Market Prices <span id="market-count" style="color:#475569;font-weight:400;font-size:10px;"></span></div>
+        <div style="overflow-y:auto;max-height:200px;">
+            <table>
+                <thead><tr><th>Good</th><th style="text-align:right;">Price</th><th style="text-align:right;">vs Base</th></tr></thead>
+                <tbody id="tb-market"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Shops -->
+    <div class="panel">
+        <div class="panel-title">Shops</div>
+        <div id="shop-list" style="font-size:11px;max-height:200px;overflow-y:auto;"></div>
+    </div>
+
+    <!-- Active Factories -->
+    <div class="panel">
+        <div class="panel-title">Processing Mills</div>
+        <div id="factory-list" style="font-size:11px;max-height:200px;overflow-y:auto;"></div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="panel" style="grid-column: 1 / -1;">
+        <div class="panel-title">Recent Transactions <span style="color:#475569;font-weight:400;font-size:10px;">last 20</span></div>
+        <div style="overflow-x:auto;">
+            <table>
+                <thead><tr><th>From</th><th>To</th><th style="text-align:right;">Amount</th><th>Good</th><th>Type</th><th>Tick</th></tr></thead>
+                <tbody id="tb-tx"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Events feed -->
+    <div class="events-card">
+        <div class="events-title">Economic Events</div>
+        <div id="evt-list" style="display:flex;flex-direction:column;gap:3px;"></div>
+    </div>
+
+</div>
+
+<script src="/static/chart.umd.min.js"></script>
+<script>
+var C = {
+    Wheat:'#fef3c7', Iron:'#9ca3af', Gold:'#fde047', Oil:'#374151', Wood:'#86efac', Coal:'#6b7280',
+    Flour:'#fed7aa', 'Iron Bars':'#d1d5db', 'Gold Bars':'#fcd34d', Lumber:'#bbf7d0', Steel:'#94a3b8', Fuel:'#6b7280',
+    Bread:'#fbbf24', Jewelry:'#f9a8d4', Furniture:'#a78bfa', Tools:'#67e8f9',
+    'Iron + Coal':'#475569'
+};
+var TF = {
+    Wheat:'#78350f', Iron:'#1f2937', Gold:'#854d0e', Oil:'#9ca3af', Wood:'#166534', Coal:'#d1d5db',
+    Flour:'#9a3412', 'Iron Bars':'#374151', 'Gold Bars':'#854d0e', Lumber:'#166534', Steel:'#1f2937', Fuel:'#d1d5db',
+    Bread:'#78350f', Jewelry:'#831843', Furniture:'#4c1d95', Tools:'#164e63',
+    'Iron + Coal':'#e2e8f0'
+};
+
+// Production chain config
+var CHAIN = [
+    { raw: 'Wheat', refined: 'Flour',     finished: 'Bread',     f1: 'Flour Mill',    f2: 'Bakery',   mine: 'Wheat Farm' },
+    { raw: 'Iron',  refined: 'Iron Bars', finished: 'Tools',    f1: 'Iron Bars Mill', f2: 'Blacksmith', mine: 'Iron Mine' },
+    { raw: 'Gold',  refined: 'Gold Bars', finished: 'Jewelry',  f1: 'Gold Bars Mill', f2: 'Jeweler',  mine: 'Gold Mine' },
+    { raw: 'Wood',  refined: 'Lumber',    finished: 'Furniture', f1: 'Lumber Mill',  f2: 'Carpenter', mine: 'Wood Mine' },
+    { raw: 'Oil',   refined: 'Fuel',      finished: null,        f1: 'Fuel Mill',    f2: null,       mine: 'Oil Mine' },
+    // Steel chain: Iron Bars + Coal → Steel (two inputs)
+    { raw: 'Iron',  refined: 'Iron Bars', finished: null,        f1: 'Iron Bars Mill', f2: null,  mine: 'Iron Mine', coal_mine: 'Coal Mine', steel_chain: true },
+    { raw: 'Coal',  refined: 'Steel',     finished: null,        f1: 'Steel Mill',    f2: null,  mine: 'Coal Mine', iron_chain: true },
+];
+
+var chMoney, chGini, chProcessing, chMoneyFlow;
+var lastTick = 0;
+var startMoney = 71000;
+
+function mk(tag, css) { var e = document.createElement(tag); if (css) e.style.cssText = css; return e; }
+
+function tag(good, qty) {
+    var bg = C[good] || '#555';
+    var fg = TF[good] || '#fff';
+    return '<span style="display:inline-block;background:' + bg + ';color:' + fg + ';padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;">' +
+        good + (qty > 1 ? ' x' + qty : '') + '</span>';
+}
+
+function invHtml(inv) {
+    var parts = [];
+    for (var g in inv) { if (inv[g] > 0) parts.push(tag(g, inv[g])); }
+    return parts.length ? parts.join(' ') : '<span style="color:#334155;font-size:10px">empty</span>';
+}
+
+function makeChartOpts(maxTicks) {
+    return {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { ticks: { color: '#475569', font: { size: 9 }, maxTicksLimit: 10 }, grid: { display: false } },
+            y: { ticks: { color: '#475569', font: { size: 9 } }, grid: { color: '#1f2937' } }
+        }
+    };
+}
+
+function initCharts() {
+    var mo = makeChartOpts();
+    chMoney = new Chart(document.getElementById('ch-money'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ data: [], borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0 }] },
+        options: mo
+    });
+    chGini = new Chart(document.getElementById('ch-gini'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ data: [], borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.08)', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0 }] },
+        options: mo
+    });
+    chProcessing = new Chart(document.getElementById('ch-processing'), {
+        type: 'bar',
+        data: { labels: [], datasets: [
+            { data: [], backgroundColor: '#3b82f6' },
+            { data: [], backgroundColor: '#8b5cf6' }
+        ]},
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#475569', font: { size: 9 }, maxTicksLimit: 10 }, grid: { display: false } },
+                y: { ticks: { color: '#475569', font: { size: 9 } }, grid: { color: '#1f2937' } }
+            }
+        }
+    });
+    chMoneyFlow = new Chart(document.getElementById('ch-moneyflow'), {
+        type: 'bar',
+        data: { labels: [], datasets: [
+            { data: [], label: 'Injected', backgroundColor: 'rgba(16,185,129,0.7)' },
+            { data: [], label: 'Sunk', backgroundColor: 'rgba(239,68,68,0.7)' }
+        ]},
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#475569', font: { size: 9 }, maxTicksLimit: 10 }, grid: { display: false } },
+                y: { ticks: { color: '#475569', font: { size: 9 } }, grid: { color: '#1f2937' } }
+            }
+        }
+    });
+}
+
+function renderChain(factories, shops, mines) {
+    var fcts = { factories: factories, mines: mines || [] };
+    var html = '';
+    CHAIN.forEach(function(c) {
+        var f1active = factories.filter(function(f) { return f.name === c.f1; }).length;
+        var f2active = c.f2 ? factories.filter(function(f) { return f.name === c.f2; }).length : 0;
+        var shop = shops.find(function(s) { return s.name === c.f2; });
+
+        var rawBg = C[c.raw] || '#555';
+        var refBg = C[c.refined] || '#555';
+        var finBg = c.finished ? (C[c.finished] || '#555') : null;
+
+        // Chain row: [RAW] -> [REFINED] -> [FINISHED]   | 1x Mill  1x Shop
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;padding:6px 8px;background:#0d1117;border-radius:6px;">';
+
+        // Left: the flow
+        html += '<div style="display:flex;align-items:center;gap:6px;">';
+        html += '<span style="background:' + rawBg + ';color:' + TF[c.raw] + ';padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;">' + c.raw + '</span>';
+        html += '<span style="color:#334155;font-size:16px;font-weight:bold;">&#8594;</span>';
+        html += '<span style="background:' + refBg + ';color:' + TF[c.refined] + ';padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;">' + c.refined + '</span>';
+        if (c.finished) {
+            html += '<span style="color:#334155;font-size:16px;font-weight:bold;">&#8594;</span>';
+            html += '<span style="background:' + finBg + ';color:' + TF[c.finished] + ';padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;">' + c.finished + '</span>';
+        }
+        html += '</div>';
+
+        // Right: badges
+        html += '<div style="display:flex;align-items:center;gap:8px;">';
+        if (c.mine) {
+            var mineData = (fcts.mines || []).find(function(m) { return m.name === c.mine; });
+            if (mineData) {
+                html += '<span style="background:#3b1f0a;color:#fb923c;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;">' + mineData.name + ': OPEN (' + (mineData.owner_name || 'public') + ')</span>';
+            } else {
+                html += '<span style="background:#1f2937;color:#475569;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;">' + c.mine + ': --</span>';
+            }
+        }
+        // Steel chain needs Coal Mine too (two inputs)
+        if (c.coal_mine) {
+            var coalMineData = (fcts.mines || []).find(function(m) { return m.name === c.coal_mine; });
+            if (coalMineData) {
+                html += '<span style="background:#3b1f0a;color:#fb923c;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;">' + coalMineData.name + ': OPEN (' + (coalMineData.owner_name || 'public') + ')</span>';
+            } else {
+                html += '<span style="background:#1f2937;color:#475569;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;">' + c.coal_mine + ': --</span>';
+            }
+        }
+        if (f1active > 0) {
+            html += '<span style="background:#1e3a5f;color:#60a5fa;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;">' + c.f1 + ': ' + f1active + '</span>';
+        }
+        if (c.f2 && shop) {
+            html += '<span style="background:#1a3a2f;color:#4ade80;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;">' + c.f2 + ': ' + (shop.cash > 0 ? 'OPEN' : 'closed') + '</span>';
+        }
+        html += '</div>';
+        html += '</div>';
+    });
+    document.getElementById('chain-flow').innerHTML = html || '<span style="color:#475569;font-size:11px">No chains active</span>';
+}
+
+function renderAgents(agents) {
+    var grid = document.getElementById('agents-grid');
+    var maxBal = Math.max.apply(Math, agents.map(function(a) { return a.balance; }));
+    var total = agents.reduce(function(s, a) { return s + a.balance; }, 0);
+    var pos = agents.filter(function(a) { return a.balance > 0; }).length;
+
+    document.getElementById('agents-summary').textContent =
+        pos + '/8 positive \u00b7 $' + Math.round(total).toLocaleString() + ' total';
+
+    var html = '';
+    agents.forEach(function(a) {
+        var pct = maxBal > 0 ? (a.balance / maxBal * 100) : 0;
+        var inv = a.inventory || {};
+        var typeColor = { producer: '#10b981', processor: '#3b82f6', trader: '#f59e0b', consumer: '#8b5cf6' };
+        var tc = typeColor[a.agent_type] || '#64748b';
+        html += '<div class="agent-card">';
+        html += '<div class="agent-name">' + a.name + '</div>';
+        html += '<div class="agent-type" style="color:' + tc + '">' + a.agent_type + '</div>';
+        html += '<div class="agent-balance" style="color:' + (a.balance > 0 ? '#10b981' : '#ef4444') + '">$' + Math.round(a.balance).toLocaleString() + '</div>';
+        var change = a.balance - startMoney;
+        var chStr = change >= 0 ? '+$' + Math.round(change).toLocaleString() : '-$' + Math.round(Math.abs(change)).toLocaleString();
+        html += '<div class="agent-change ' + (change >= 0 ? 'pos' : 'neg') + '">' + chStr + ' vs start</div>';
+        html += '<div class="agent-bar"><div class="agent-bar-fill" style="width:' + pct + '%"></div></div>';
+        html += '<div class="agent-inv">' + invHtml(inv) + '</div>';
+        html += '</div>';
+    });
+    grid.innerHTML = html;
+}
+
+async function loadAll() {
+    var [st, ag, mk2, tx, hist, evts, shps, fcts] = await Promise.all([
+        fetch('/api/simulation/status').then(function(r) { return r.json(); }),
+        fetch('/api/agents').then(function(r) { return r.json(); }),
+        fetch('/api/market').then(function(r) { return r.json(); }),
+        fetch('/api/transactions').then(function(r) { return r.json(); }),
+        fetch('/api/history').then(function(r) { return r.json(); }),
+        fetch('/api/events').then(function(r) { return r.json(); }),
+        fetch('/api/shops').then(function(r) { return r.json(); }),
+        fetch('/api/production_chains').then(function(r) { return r.json(); })
+    ]);
+
+    // Status
+    var dot = document.getElementById('status-dot');
+    var txt = document.getElementById('status-txt');
+    dot.className = 'dot ' + (st.running ? 'dot-green' : 'dot-gray');
+    txt.textContent = st.running ? 'Running' : 'Stopped';
+    document.getElementById('tick-val').textContent = st.tick_count || 0;
+    lastTick = st.tick_count || 0;
+
+    // Agents
+    if (ag.agents) {
+        renderAgents(ag.agents);
+        var total = ag.agents.reduce(function(s, a) { return s + a.balance; }, 0);
+        document.getElementById('s-money').textContent = '$' + Math.round(total).toLocaleString();
+        document.getElementById('s-money-delta').textContent = (total >= startMoney ? '+' : '') + '$' + Math.round(total - startMoney).toLocaleString();
+    }
+
+    // Stats
+    if (hist.history && hist.history.length) {
+        var h = hist.history;
+        var lbls = h.map(function(x) { return x.tick; });
+        chMoney.data.labels = lbls;
+        chMoney.data.datasets[0].data = h.map(function(x) { return x.total_money; });
+        chMoney.update('none');
+        chGini.data.labels = lbls;
+        chGini.data.datasets[0].data = h.map(function(x) { return x.gini_coefficient; });
+        chGini.update('none');
+        chProcessing.data.labels = lbls;
+        chProcessing.data.datasets[0].data = h.map(function(x) { return x.factories_active || 0; });
+        chProcessing.data.datasets[1].data = h.map(function(x) { return x.processing_count || 0; });
+        chProcessing.update('none');
+
+        chMoneyFlow.data.labels = lbls;
+        chMoneyFlow.data.datasets[0].data = h.map(function(x) { return x.money_injected || 0; });
+        chMoneyFlow.data.datasets[1].data = h.map(function(x) { return x.money_sunk || 0; });
+        chMoneyFlow.update('none');
+
+        var latest = h[h.length - 1];
+        document.getElementById('s-gini').textContent = (latest.gini_coefficient || 0).toFixed(3);
+        document.getElementById('s-factories').textContent = latest.factories_active || 0;
+        var infl = latest.inflation_rate || 0;
+        document.getElementById('s-infl').textContent = (infl >= 0 ? '+' : '') + infl.toFixed(1) + '% infl';
+        document.getElementById('s-avg').textContent = '$' + (latest.avg_price || 0).toFixed(2);
+    }
+
+    // Transactions
+    if (tx.transactions) {
+        document.getElementById('s-tx').textContent = tx.transactions.length.toLocaleString();
+        var last10 = tx.transactions.slice(-20);
+        var typeNames = {
+            production: 'prod', factory_use: 'proc', factory_build: 'build',
+            processing: 'proc', purchase: 'buy', consumption: 'cons', trade: 'trade'
+        };
+        var tcls = { production: '#10b981', factory_use: '#8b5cf6', factory_build: '#f59e0b',
+                     processing: '#3b82f6', purchase: '#60a5fa', consumption: '#ef4444', trade: '#fcd34d' };
+        var tb = document.getElementById('tb-tx');
+        tb.innerHTML = last10.map(function(tx) {
+            var g = tx.good_name ? tag(tx.good_name, tx.quantity || 1) : '-';
+            var tn = typeNames[tx.transaction_type] || tx.transaction_type;
+            var tc = tcls[tx.transaction_type] || '#64748b';
+            var amtStr = tx.amount > 0 ? '<span style="color:#10b981">+$' + tx.amount.toFixed(0) + '</span>'
+                                     : '<span style="color:#ef4444">-$' + Math.abs(tx.amount).toFixed(0) + '</span>';
+            return '<tr>' +
+                '<td style="color:#64748b;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (tx.from_name || 'Sys') + '</td>' +
+                '<td style="max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (tx.to_name || 'Sys') + '</td>' +
+                '<td style="text-align:right;white-space:nowrap;font-family:monospace;font-size:11px;">' + amtStr + '</td>' +
+                '<td>' + g + '</td>' +
+                '<td style="color:' + tc + ';font-size:10px;text-transform:uppercase;">' + tn + '</td>' +
+                '<td style="color:#334155;font-family:monospace;font-size:10px;">' + tx.tick + '</td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    // Market
+    if (mk2.market) {
+        document.getElementById('market-count').textContent = mk2.market.length + ' goods';
+        var tb = document.getElementById('tb-market');
+        tb.innerHTML = mk2.market.map(function(m) {
+            var pct = ((m.current_price - m.base_price) / m.base_price * 100).toFixed(0);
+            var cls = m.current_price > m.base_price ? 'price-up' : 'price-down';
+            var sign = m.current_price > m.base_price ? '+' : '';
+            var ref = m.is_refined ? '<span class="ref-badge">ref</span>' : '';
+            return '<tr>' +
+                '<td>' + m.good_name + ref + '</td>' +
+                '<td style="text-align:right;font-family:monospace;">$' + m.current_price.toFixed(2) + '</td>' +
+                '<td style="text-align:right;color:' + (cls === 'price-up' ? '#ef4444' : '#10b981') + ';font-size:10px;">' + sign + pct + '%</td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    // Events
+    if (evts.events) {
+        document.getElementById('s-events').textContent = evts.events.length;
+        var el = document.getElementById('evt-list');
+        el.innerHTML = (evts.events.slice(0, 12)).map(function(ev) {
+            var cls = ev.event_type === 'positive' ? 'evt-pos' : ev.event_type === 'negative' ? 'evt-neg' : 'evt-neu';
+            return '<div class="evt ' + cls + '"><span class="evt-tick">[' + ev.tick + ']</span><span class="evt-text">' + ev.description + '</span></div>';
+        }).join('');
+    }
+
+    // Shops
+    if (shps.shops) {
+        document.getElementById('s-shops').textContent = shps.shops.length;
+        var list = document.getElementById('shop-list');
+        if (!shps.shops.length) {
+            list.innerHTML = '<span style="color:#475569;font-size:11px">No shops open</span>';
+        } else {
+            list.innerHTML = shps.shops.map(function(s) {
+                var inv = s.inventory || {};
+                var invParts = [];
+                for (var g in inv) { if (inv[g] > 0) invParts.push(tag(g, inv[g])); }
+                var invStr = invParts.length ? invParts.join(' ') : '<span style="color:#334155">empty</span>';
+                var cashColor = s.cash > 5000 ? '#10b981' : s.cash > 2000 ? '#f59e0b' : '#ef4444';
+                return '<div style="border-bottom:1px solid #1f2937;padding:6px 0;">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">' +
+                    '<span style="font-weight:600;">' + s.name + '</span>' +
+                    '<span style="color:' + cashColor + ';font-size:11px;font-family:monospace;">$' + Math.round(s.cash).toLocaleString() + '</span>' +
+                    '</div>' +
+                    '<div style="color:#475569;font-size:10px;margin-bottom:4px;">' + s.input_good + ' \u2192 ' + s.output_good + ' <span style="background:#1e3a5f;color:#60a5fa;padding:0 4px;border-radius:3px;font-size:9px">pays ' + Math.round(s.buy_price_mult * 100) + '%</span></div>' +
+                    '<div style="font-size:10px;">' + invStr + '</div>' +
+                    '</div>';
+            }).join('');
+        }
+    }
+
+    // Factories — always render (mills are shown from /api/factories)
+    if (fcts && fcts.factories) {
+        document.getElementById('s-factory-detail').textContent = fcts.factories.length + ' mills' + (fcts.mines && fcts.mines.length ? ' + ' + fcts.mines.length + ' mines' : '');
+        var list = document.getElementById('factory-list');
+        var infraCount = (fcts.factories ? fcts.factories.length : 0) + (fcts.mines ? fcts.mines.length : 0);
+        if (!infraCount) {
+            list.innerHTML = '<span style="color:#475569;font-size:11px">No infrastructure yet</span>';
+        } else {
+            var items = [];
+            fcts.factories.forEach(function(f) {
+                var bg = C[f.produces] || '#334155';
+                var fg = TF[f.produces] || '#fff';
+                var ownerStr = f.owner_name ? '<span style="color:#10b981;font-size:10px;">' + f.owner_name + '</span>' : '<span style="color:#334155;font-size:10px;">public</span>';
+                var pips = '';
+                for (var p = 1; p <= 5; p++) { pips += '<span style="display:inline-block;width:5px;height:5px;border-radius:1px;margin:0 1px;background:' + (p <= f.level ? '#f59e0b' : '#1f2937') + '"></span>'; }
+                items.push('<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #1f2937;">' +
+                    '<div style="display:flex;align-items:center;gap:6px;">' +
+                    '<span style="background:' + bg + ';color:' + fg + ';padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;min-width:70px;text-align:center;">' + f.name + '</span>' +
+                    '<span style="color:#64748b;font-size:10px;">\u2192 ' + f.produces + '</span>' +
+                    '</div>' +
+                    '<div style="display:flex;align-items:center;gap:8px;">' +
+                    '<span style="color:#475569;font-size:10px;">' + pips + '</span>' +
+                    '<span style="background:#1e3a5f;color:#60a5fa;padding:1px 5px;border-radius:3px;font-size:10px;">$' + f.fee_per_unit.toFixed(2) + '</span>' +
+                    ownerStr + '</div></div>');
+            });
+            if (fcts.mines) {
+                fcts.mines.forEach(function(m) {
+                    var bg = '#fb923c';
+                    var fg = '#1f2937';
+                    var ownerStr = m.owner_name ? '<span style="color:#10b981;font-size:10px;">' + m.owner_name + '</span>' : '<span style="color:#334155;font-size:10px;">public</span>';
+                    var pips = '';
+                    for (var p = 1; p <= 5; p++) { pips += '<span style="display:inline-block;width:5px;height:5px;border-radius:1px;margin:0 1px;background:' + (p <= m.level ? '#f59e0b' : '#1f2937') + '"></span>'; }
+                    items.push('<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #1f2937;">' +
+                        '<div style="display:flex;align-items:center;gap:6px;">' +
+                        '<span style="background:' + bg + ';color:' + fg + ';padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;min-width:70px;text-align:center;">\u2693 ' + m.name + '</span>' +
+                        '<span style="color:#64748b;font-size:10px;">\u2192 ' + m.produces + '</span>' +
+                        '</div>' +
+                        '<div style="display:flex;align-items:center;gap:8px;">' +
+                        '<span style="color:#475569;font-size:10px;">' + pips + '</span>' +
+                        '<span style="background:#3b1f0a;color:#fb923c;padding:1px 5px;border-radius:3px;font-size:10px;">$' + m.fee_per_unit.toFixed(2) + '</span>' +
+                        ownerStr + '</div></div>');
+                });
+            }
+            list.innerHTML = items.join('');
+        }
+    }
+
+    // Render production chain
+    renderChain(fcts && fcts.factories ? fcts.factories : [], shps.shops || [], fcts && fcts.mines ? fcts.mines : []);
+
+    // Net profit
+    var totalMoney = ag.agents ? ag.agents.reduce(function(s, a) { return s + a.balance; }, 0) : 0;
+    var profit = totalMoney - startMoney;
+    var profitEl = document.getElementById('s-profit');
+    profitEl.textContent = (profit >= 0 ? '+$' : '-$') + Math.abs(Math.round(profit)).toLocaleString();
+    profitEl.style.color = profit >= 0 ? '#10b981' : '#ef4444';
+}
+
+async function startSim() { await fetch('/api/simulation/start', { method: 'POST' }); }
+async function stopSim()  { await fetch('/api/simulation/stop', { method: 'POST' }); }
+async function resetSim() { if (!confirm('Reset simulation?')) return; await fetch('/api/simulation/reset', { method: 'POST' }); loadAll(); }
+
+function setSpeed(v) {
+    document.getElementById('speed-val').textContent = v + 's';
+    fetch('/api/simulation/speed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interval: parseFloat(v) }) });
+}
+
+initCharts();
+loadAll();
+setInterval(loadAll, 1500);
+</script>
+</body>
+</html>
