@@ -3,7 +3,7 @@ EconSim - Economy Simulator
 A local web-based economic simulation dashboard.
 """
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_file
 import sqlite3
 import os
 import random
@@ -116,6 +116,9 @@ def init_db():
             balance REAL DEFAULT 1000.0,
             inventory TEXT DEFAULT '{}',
             happiness REAL DEFAULT 0.5,
+            reputation REAL DEFAULT 0.5,
+            total_contracts INTEGER DEFAULT 0,
+            fulfilled_contracts INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -190,6 +193,45 @@ def init_db():
         )
     ''')
 
+    # ---- CONTRACTS ----
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS contracts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            creator_id INTEGER,
+            seller_id INTEGER NOT NULL,
+            buyer_id INTEGER NOT NULL,
+            good_name TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            price_per_unit REAL NOT NULL,
+            delivery_tick INTEGER NOT NULL,
+            status TEXT DEFAULT 'pending',
+            reputation_impact REAL DEFAULT 0.05,
+            created_tick INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (creator_id) REFERENCES agents(id),
+            FOREIGN KEY (seller_id) REFERENCES agents(id),
+            FOREIGN KEY (buyer_id) REFERENCES agents(id)
+        )
+    ''')
+
+    # ---- CONTRACT LOG ----
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS contract_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            contract_id INTEGER,
+            seller_id INTEGER NOT NULL,
+            buyer_id INTEGER NOT NULL,
+            good_name TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            total_price REAL NOT NULL,
+            status TEXT NOT NULL,
+            tick INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (contract_id) REFERENCES contracts(id),
+            FOREIGN KEY (seller_id) REFERENCES agents(id),
+            FOREIGN KEY (buyer_id) REFERENCES agents(id)
+        )
+    ''')
     # ---- FACTORIES ----
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS factories (
@@ -1177,6 +1219,208 @@ def agent_trade(conn, agent, market_goods):
     conn.commit()
     return 'trade:%s' % gname
 
+
+# ============ CONTRACTS ============
+
+def agent_propose_contract(conn, agent, market_goods):
+    """Agent offers a forward contract: lock in price + quantity for future delivery.
+    Sellers must have goods in inventory (or own the mill that produces them).
+    Buyers must have enough balance to pay."""
+    if random.random() > 0.08:
+        return None
+
+    cursor = conn.cursor()
+    agent_inv = parse_inventory(agent['inventory'])
+    tick = simulation['tick_count']
+
+    # --- What goods can this agent realistically sell? ---
+    # Check 1: goods already in inventory (strongest signal)
+    sellable = []
+    for good, price in [(g['good_name'], g['current_price']) for g in market_goods]:
+        have = agent_inv.get(good, 0)
+        if have >= 1:
+            sellable.append((good, price, have))
+
+    # Check 2: refined goods from mills the agent owns (can produce before delivery)
+    cursor.execute('SELECT produces FROM factories WHERE owner_id = ? AND active = 1 AND shop_id IS NULL', (agent['id'],))
+    for row in cursor.fetchall():
+        refined = row['produces']  # e.g. 'Flour', 'Steel'
+        if refined in REFINED_GOODS:
+            chain = PRODUCTION_CHAINS.get(refined)
+            if chain:
+                can_make = True
+                for raw, amt in chain['inputs'].items():
+                    if agent_inv.get(raw, 0) < amt:
+                        can_make = False
+                        break
+                if can_make:
+                    price = next((g['current_price'] for g in market_goods if g['good_name'] == refined), 0)
+                    if price > 0:
+                        sellable.append((refined, price, agent_inv.get(refined, 0)))
+
+    # --- Decide role ---
+    max_buy_value = agent['balance'] * 0.85
+
+    if sellable:
+        role = 'seller'
+        chosen_good, current_price, have = random.choice(sellable)
+        # Never propose more than you have in stock (stock is the safe fallback)
+        quantity = random.randint(1, max(1, have))
+    elif max_buy_value >= 100:
+        # No goods to sell — try buying something affordable
+        affordable = [(g['good_name'], g['current_price'])
+                     for g in market_goods if g['current_price'] * 3 <= max_buy_value]
+        if not affordable:
+            return None
+        role = 'buyer'
+        chosen_good, current_price = random.choice(affordable)
+        quantity = random.randint(1, 3)
+    else:
+        return None
+
+    # --- Pick counterparty (prefer high-rep) ---
+    cursor.execute('SELECT * FROM agents WHERE id != ? ORDER BY RANDOM() LIMIT 5', (agent['id'],))
+    candidates = sorted([dict(row) for row in cursor.fetchall()], key=lambda a: -a['reputation'])
+    if not candidates:
+        return None
+    counterparty = candidates[0]
+
+    seller = agent if role == 'seller' else counterparty
+    buyer = counterparty if role == 'seller' else agent
+
+    # Validate buyer can afford it
+    locked_price = current_price * random.uniform(0.85, 1.15)
+    total_value = locked_price * quantity
+    if buyer['balance'] < total_value:
+        return None
+
+    # Delivery: 8-18 ticks (shorter = more likely to fulfill)
+    delivery_tick = tick + random.randint(8, 18)
+    rep_impact = round(min(0.15, total_value / 2000), 4)
+
+    cursor.execute('''
+        INSERT INTO contracts (creator_id, seller_id, buyer_id, good_name, quantity, price_per_unit, delivery_tick, status, reputation_impact, created_tick)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+    ''', (agent['id'], seller['id'], buyer['id'], chosen_good, quantity, round(locked_price, 2), delivery_tick, rep_impact, tick))
+    conn.commit()
+    return 'contract_proposed:%s' % chosen_good
+
+
+def resolve_contracts(conn):
+    """Check pending contracts for maturity; execute or breach them."""
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT c.*, sa.name as seller_name, ba.name as buyer_name
+        FROM contracts c
+        JOIN agents sa ON c.seller_id = sa.id
+        JOIN agents ba ON c.buyer_id = ba.id
+        WHERE c.status = 'pending' AND c.delivery_tick <= ?
+    ''', (simulation['tick_count'],))
+    due = [dict(row) for row in cursor.fetchall()]
+    if not due:
+        return
+
+    for contract in due:
+        cursor.execute('SELECT * FROM agents WHERE id = ?', (contract['seller_id'],))
+        seller = dict(cursor.fetchone())
+        cursor.execute('SELECT * FROM agents WHERE id = ?', (contract['buyer_id'],))
+        buyer = dict(cursor.fetchone())
+
+        seller_inv = parse_inventory(seller['inventory'])
+        buyer_inv = parse_inventory(buyer['inventory'])
+        total_price = contract['price_per_unit'] * contract['quantity']
+        fulfilled = False
+        status_reason = ''
+
+        # Check: does seller have the goods?
+        if seller_inv.get(contract['good_name'], 0) >= contract['quantity']:
+            # Check: does buyer have enough balance?
+            if buyer['balance'] >= total_price:
+                # Execute the contract
+                # Transfer goods: seller → buyer
+                seller_inv[contract['good_name']] -= contract['quantity']
+                if seller_inv[contract['good_name']] <= 0:
+                    del seller_inv[contract['good_name']]
+                buyer_inv[contract['good_name']] = buyer_inv.get(contract['good_name'], 0) + contract['quantity']
+                # Transfer money: buyer → seller
+                cursor.execute('UPDATE agents SET balance = balance - ?, inventory = ? WHERE id = ?',
+                               (total_price, inventory_to_json(seller_inv), seller['id']))
+                cursor.execute('UPDATE agents SET balance = balance + ? WHERE id = ?',
+                               (total_price, buyer['id']))
+                cursor.execute('UPDATE agents SET inventory = ? WHERE id = ?',
+                               (inventory_to_json(buyer_inv), buyer['id']))
+                # Mark fulfilled, update reputation
+                cursor.execute('UPDATE agents SET total_contracts = total_contracts + 1, fulfilled_contracts = fulfilled_contracts + 1 WHERE id IN (?, ?)',
+                               (seller['id'], buyer['id']))
+                cursor.execute('UPDATE agents SET reputation = MIN(1.0, reputation + ?) WHERE id IN (?, ?)',
+                               (contract['reputation_impact'], seller['id'], buyer['id']))
+                status_reason = 'fulfilled'
+                fulfilled = True
+            else:
+                status_reason = 'buyer_insufficient_funds'
+        else:
+            status_reason = 'seller_insufficient_goods'
+
+        if not fulfilled:
+            # Breach: penalize both parties but seller harder
+            cursor.execute('UPDATE agents SET reputation = MAX(0, reputation - ?) WHERE id = ?',
+                           (contract['reputation_impact'], seller['id']))
+            cursor.execute('UPDATE agents SET reputation = MAX(0, reputation - ?) WHERE id = ?',
+                           (contract['reputation_impact'] * 0.5, buyer['id']))
+            cursor.execute('UPDATE agents SET total_contracts = total_contracts + 1 WHERE id IN (?, ?)',
+                           (seller['id'], buyer['id']))
+            # Breach fee: seller pays 25% of contract value as penalty to buyer
+            breach_fee = total_price * 0.25
+            if seller['balance'] >= breach_fee:
+                cursor.execute('UPDATE agents SET balance = balance - ? WHERE id = ?', (breach_fee, seller['id']))
+                cursor.execute('UPDATE agents SET balance = balance + ? WHERE id = ?', (breach_fee, buyer['id']))
+
+        # Log contract execution
+        cursor.execute('''
+            INSERT INTO contract_log (contract_id, seller_id, buyer_id, good_name, quantity, total_price, status, tick)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (contract['id'], seller['id'], buyer['id'], contract['good_name'], contract['quantity'], total_price, status_reason, simulation['tick_count']))
+        cursor.execute('UPDATE contracts SET status = ? WHERE id = ?',
+                       ('completed_' + status_reason, contract['id']))
+    conn.commit()
+
+
+def agent_evaluate_reputation(conn, agent):
+    """Periodically recalculate agent reputation based on contract record."""
+    cursor = conn.cursor()
+    cursor.execute('SELECT total_contracts, fulfilled_contracts, reputation FROM agents WHERE id = ?', (agent['id'],))
+    row = cursor.fetchone()
+    if not row or row['total_contracts'] == 0:
+        return
+    # Historical ratio-based reputation supplement
+    ratio = row['fulfilled_contracts'] / row['total_contracts']
+    # Blend: 70% behavioral ratio, 30% existing rep (smooths swings)
+    new_rep = round(ratio * 0.7 + row['reputation'] * 0.3, 4)
+    cursor.execute('UPDATE agents SET reputation = ? WHERE id = ?', (new_rep, agent['id']))
+
+
+def update_reputations(conn):
+    """Recalculate reputation for all agents who have completed contracts."""
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM agents WHERE total_contracts > 0')
+    for agent in [dict(row) for row in cursor.fetchall()]:
+        agent_evaluate_reputation(conn, agent)
+    conn.commit()
+
+
+def get_contracts_for_api(conn):
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT c.*, sa.name as seller_name, ba.name as buyer_name, ca.name as creator_name
+        FROM contracts c
+        JOIN agents sa ON c.seller_id = sa.id
+        JOIN agents ba ON c.buyer_id = ba.id
+        JOIN agents ca ON c.creator_id = ca.id
+        ORDER BY c.id DESC
+    ''')
+    return [dict(row) for row in cursor.fetchall()]
+
+
 def update_prices(conn):
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM market')
@@ -1289,13 +1533,13 @@ def simulation_tick():
             continue
 
         if agent['agent_type'] == 'processor':
-            actions = [('produce', 0.15), ('factory', 0.25), ('process', 0.10), ('sell_shop', 0.25), ('buy_shop', 0.10), ('consume', 0.05), ('trade', 0.05), ('build', 0.05)]
+            actions = [('produce', 0.15), ('factory', 0.25), ('process', 0.10), ('sell_shop', 0.25), ('buy_shop', 0.10), ('consume', 0.05), ('trade', 0.05), ('build', 0.05), ('contract', 0.05)]
         elif agent['agent_type'] == 'producer':
-            actions = [('produce', 0.35), ('factory', 0.10), ('process', 0.10), ('sell_shop', 0.25), ('buy_shop', 0.08), ('consume', 0.05), ('trade', 0.02), ('build', 0.05)]
+            actions = [('produce', 0.35), ('factory', 0.10), ('process', 0.10), ('sell_shop', 0.25), ('buy_shop', 0.08), ('consume', 0.05), ('trade', 0.02), ('build', 0.05), ('contract', 0.05)]
         elif agent['agent_type'] == 'trader':
-            actions = [('produce', 0.08), ('factory', 0.05), ('process', 0.05), ('sell_shop', 0.35), ('buy_shop', 0.12), ('consume', 0.10), ('trade', 0.20), ('build', 0.05)]
+            actions = [('produce', 0.08), ('factory', 0.05), ('process', 0.05), ('sell_shop', 0.35), ('buy_shop', 0.12), ('consume', 0.10), ('trade', 0.20), ('build', 0.05), ('contract', 0.05)]
         else:
-            actions = [('produce', 0.10), ('factory', 0.05), ('process', 0.05), ('sell_shop', 0.05), ('buy_shop', 0.20), ('consume', 0.35), ('trade', 0.10), ('build', 0.05)]
+            actions = [('produce', 0.10), ('factory', 0.05), ('process', 0.05), ('sell_shop', 0.05), ('buy_shop', 0.20), ('consume', 0.35), ('trade', 0.10), ('build', 0.05), ('contract', 0.05)]
 
         action = random.choices([a[0] for a in actions], weights=[a[1] for a in actions])[0]
 
@@ -1317,8 +1561,17 @@ def simulation_tick():
             result = agent_build_factory(conn, agent)
             if not result:
                 agent_build_mine(conn, agent, market_goods)
+        elif action == 'contract':
+            agent_propose_contract(conn, agent, market_goods)
         else:
             agent_trade(conn, agent, market_goods)
+
+    # Resolve matured contracts (deliveries due this tick)
+    resolve_contracts(conn)
+
+    # Periodic reputation recalculation (every 20 ticks)
+    if simulation['tick_count'] % 20 == 0:
+        update_reputations(conn)
 
     # Natural drift
     for good in market_goods:
@@ -1542,31 +1795,35 @@ def simulation_loop():
 
 @app.route('/')
 def index():
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute('SELECT COUNT(*) as count FROM agents')
-    agent_count = cursor.fetchone()['count']
-    cursor.execute('SELECT SUM(balance) as total FROM agents')
-    total_money = cursor.fetchone()['total'] or 0
-    cursor.execute('SELECT COUNT(*) as count FROM transactions')
-    transaction_count = cursor.fetchone()['count']
-    cursor.execute('SELECT COUNT(*) as count FROM market')
-    market_items = cursor.fetchone()['count']
-    cursor.execute('SELECT COUNT(*) as count FROM factories WHERE active = 1')
-    factory_count = cursor.fetchone()['count']
-    cursor.execute('SELECT * FROM agents')
-    agents_data = [dict(row) for row in cursor.fetchall()]
-    gini = calculate_gini(agents_data)
-    conn.close()
-    return render_template('index.html',
-                           agent_count=agent_count,
-                           total_money=total_money,
-                           transaction_count=transaction_count,
-                           market_items=market_items,
-                           factories_active=factory_count,
-                           gini=gini,
-                           tick_count=simulation['tick_count'],
-                           sim_running=simulation['running'])
+    return send_file('/home/dalton/.openclaw/workspace/EconSim/templates/index.html', mimetype='text/html')
+
+# ORIGINAL:
+# def index():
+#     conn = get_db()
+#     cursor = conn.cursor()
+#     cursor.execute('SELECT COUNT(*) as count FROM agents')
+#     agent_count = cursor.fetchone()['count']
+#     cursor.execute('SELECT SUM(balance) as total FROM agents')
+#     total_money = cursor.fetchone()['total'] or 0
+#     cursor.execute('SELECT COUNT(*) as count FROM transactions')
+#     transaction_count = cursor.fetchone()['count']
+#     cursor.execute('SELECT COUNT(*) as count FROM market')
+#     market_items = cursor.fetchone()['count']
+#     cursor.execute('SELECT COUNT(*) as count FROM factories WHERE active = 1')
+#     factory_count = cursor.fetchone()['count']
+#     cursor.execute('SELECT * FROM agents')
+#     agents_data = [dict(row) for row in cursor.fetchall()]
+#     gini = calculate_gini(agents_data)
+#     conn.close()
+#     return render_template('index.html',
+#                            agent_count=agent_count,
+#                            total_money=total_money,
+#                            transaction_count=transaction_count,
+#                            market_items=market_items,
+#                            factories_active=factory_count,
+#                            gini=gini,
+#                            tick_count=simulation['tick_count'],
+#                            sim_running=simulation['running'])
 
 
 @app.route('/api/agents', methods=['GET'])
@@ -1676,6 +1933,14 @@ def get_shops():
         s['inventory'] = parse_inventory(s['inventory'])
     conn.close()
     return {'shops': shops}
+
+
+@app.route('/api/contracts', methods=['GET'])
+def get_contracts():
+    conn = get_db()
+    contracts = get_contracts_for_api(conn)
+    conn.close()
+    return {'contracts': contracts}
 
 
 @app.route('/api/mines', methods=['GET'])
