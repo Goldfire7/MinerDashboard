@@ -46,7 +46,7 @@ PRODUCTION_CHAINS = {
     'Gold Bars': {'inputs': {'Gold': 2},            'output': 'Gold Bars', 'output_qty': 1, 'base_price': 1200.00},
     'Lumber':    {'inputs': {'Wood': 2},            'output': 'Lumber',    'output_qty': 1, 'base_price': 65.00},
     'Steel':     {'inputs': {'Iron Bars': 1, 'Coal': 1}, 'output': 'Steel', 'output_qty': 1, 'base_price': 280.00},
-    'Steel Beams': {'inputs': {'Steel': 1},            'output': 'Steel Beams', 'output_qty': 1, 'base_price': 520.00},
+    'Steel Beams': {'inputs': {'Iron Bars': 2},      'output': 'Steel Beams', 'output_qty': 1, 'base_price': 520.00},
     'Fuel':      {'inputs': {'Oil': 2},             'output': 'Fuel',      'output_qty': 1, 'base_price': 40.00},
 }
 
@@ -80,7 +80,7 @@ SHOP_RECIPES = {
     'Jeweler':     {'inputs': {'Gold Bars': 2},      'output': 'Jewelry',   'buy_price_mult': 0.90, 'initial_cash': 10000,  'mill': 'Gold Bars Mill'},
     'Carpenter':   {'inputs': {'Lumber': 3},         'output': 'Furniture', 'buy_price_mult': 0.90, 'initial_cash': 5000,   'mill': 'Lumber Mill'},
     'Blacksmith':  {'inputs': {'Steel': 1},          'output': 'Tools',     'buy_price_mult': 0.90, 'initial_cash': 5000,   'mill': 'Steel Foundry'},
-    'Hardware Store': {'inputs': {'Steel': 1},       'output': 'Steel Beams', 'buy_price_mult': 0.90, 'initial_cash': 5000,   'mill': 'Steel Beams Mill'},
+    'Hardware Store': {'inputs': {'Iron Bars': 1},   'output': 'Steel Beams', 'buy_price_mult': 0.90, 'initial_cash': 5000,   'mill': 'Iron Bars Mill'},
 }
 
 # Finished goods prices (what shops output — used by market and agents)
@@ -1161,7 +1161,7 @@ def agent_sell_finished(conn, agent, market_goods):
         price = prices.get(good_name, 0)
         if price <= 0:
             continue
-        unit_price = price * 0.85  # sell at 85% of market
+        unit_price = price * 0.95  # sell at 95% of market
         total = unit_price * qty
         if total <= 0:
             continue
