@@ -869,6 +869,36 @@ def agent_build_factory(conn, agent):
     conn.commit()
     return 'built:%s' % target_good
 
+def agent_upgrade_factory(conn, agent):
+    """Owner upgrades their mill/foundry. Cost scales with level squared."""
+    if random.random() > 0.08:
+        return None
+    cursor = conn.cursor()
+    # Only consider factories this agent owns
+    cursor.execute('SELECT * FROM factories WHERE owner_id = ? AND active = 1', (agent['id'],))
+    owned = [dict(row) for row in cursor.fetchall()]
+    if not owned:
+        return None
+    factory = random.choice(owned)
+    current_level = factory['level']
+    # Upgrade cost: base_price * (level^2 / 2)
+    # Level 1 -> 2: 50% of base | Level 2 -> 3: 200% of base | Level 3 -> 4: 450% of base
+    chain = PRODUCTION_CHAINS.get(factory['produces'], {})
+    base_price = chain.get('base_price', 100) if chain else 100
+    upgrade_cost = base_price * (current_level ** 2) / 2
+    if agent['balance'] < upgrade_cost:
+        return None
+    new_level = current_level + 1
+    cursor.execute('UPDATE factories SET level = ? WHERE id = ?', (new_level, factory['id']))
+    cursor.execute('UPDATE agents SET balance = balance - ? WHERE id = ?', (upgrade_cost, agent['id']))
+    tx_desc = 'Upgraded %s to level %d (cost $%.0f)' % (factory['name'], new_level, upgrade_cost)
+    cursor.execute(
+        'INSERT INTO transactions (from_agent, to_agent, amount, transaction_type, description, tick) '
+        'VALUES (?, ?, ?, ?, ?, ?)',
+        (agent['id'], agent['id'], upgrade_cost, 'factory_upgrade', tx_desc, simulation['tick_count']))
+    conn.commit()
+    return 'upgraded:%s' % factory['name']
+
 def agent_build_mine(conn, agent, market_goods):
     """Build a mine to extract ore."""
     if random.random() > 0.25:  # mines are less rare now with more raw material demand
@@ -1537,11 +1567,11 @@ def simulation_tick():
         if agent['agent_type'] == 'processor':
             actions = [('produce', 0.15), ('factory', 0.25), ('process', 0.10), ('sell_shop', 0.25), ('buy_shop', 0.10), ('consume', 0.05), ('trade', 0.05), ('build', 0.05), ('contract', 0.05)]
         elif agent['agent_type'] == 'producer':
-            actions = [('produce', 0.35), ('factory', 0.10), ('process', 0.10), ('sell_shop', 0.25), ('buy_shop', 0.08), ('consume', 0.05), ('trade', 0.02), ('build', 0.05), ('contract', 0.05)]
+            actions = [('produce', 0.35), ('factory', 0.10), ('process', 0.10), ('sell_shop', 0.25), ('buy_shop', 0.08), ('consume', 0.05), ('trade', 0.02), ('build', 0.03), ('upgrade', 0.02), ('contract', 0.05)]
         elif agent['agent_type'] == 'trader':
-            actions = [('produce', 0.08), ('factory', 0.05), ('process', 0.05), ('sell_shop', 0.35), ('buy_shop', 0.12), ('consume', 0.10), ('trade', 0.20), ('build', 0.05), ('contract', 0.05)]
+            actions = [('produce', 0.08), ('factory', 0.05), ('process', 0.05), ('sell_shop', 0.30), ('buy_shop', 0.15), ('consume', 0.10), ('trade', 0.20), ('build', 0.03), ('upgrade', 0.02), ('contract', 0.05)]
         else:
-            actions = [('produce', 0.10), ('factory', 0.05), ('process', 0.05), ('sell_shop', 0.05), ('buy_shop', 0.20), ('consume', 0.35), ('trade', 0.10), ('build', 0.05), ('contract', 0.05)]
+            actions = [('produce', 0.10), ('factory', 0.05), ('process', 0.05), ('sell_shop', 0.05), ('buy_shop', 0.20), ('consume', 0.35), ('trade', 0.10), ('build', 0.03), ('upgrade', 0.02), ('contract', 0.05)]
 
         action = random.choices([a[0] for a in actions], weights=[a[1] for a in actions])[0]
 
@@ -1563,6 +1593,8 @@ def simulation_tick():
             result = agent_build_factory(conn, agent)
             if not result:
                 agent_build_mine(conn, agent, market_goods)
+        elif action == 'upgrade':
+            agent_upgrade_factory(conn, agent)
         elif action == 'contract':
             agent_propose_contract(conn, agent, market_goods)
         else:
