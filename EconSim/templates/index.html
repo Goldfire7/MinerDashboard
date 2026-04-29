@@ -278,13 +278,13 @@
 <script>
 var C = {
     Wheat:'#fef3c7', Iron:'#9ca3af', Gold:'#fde047', Oil:'#374151', Wood:'#86efac', Coal:'#6b7280',
-    Flour:'#fed7aa', 'Iron Bars':'#d1d5db', 'Gold Bars':'#fcd34d', Lumber:'#bbf7d0', Steel:'#94a3b8', Fuel:'#6b7280',
+    Flour:'#fed7aa', 'Iron Bars':'#d1d5db', 'Gold Bars':'#fcd34d', Lumber:'#bbf7d0', Steel:'#94a3b8', Fuel:'#6b7280', 'Steel Beams':'#c4b5fd',
     Bread:'#fbbf24', Jewelry:'#f9a8d4', Furniture:'#a78bfa', Tools:'#67e8f9',
     'Iron + Coal':'#475569'
 };
 var TF = {
     Wheat:'#78350f', Iron:'#1f2937', Gold:'#854d0e', Oil:'#9ca3af', Wood:'#166534', Coal:'#d1d5db',
-    Flour:'#9a3412', 'Iron Bars':'#374151', 'Gold Bars':'#854d0e', Lumber:'#166534', Steel:'#1f2937', Fuel:'#d1d5db',
+    Flour:'#9a3412', 'Iron Bars':'#374151', 'Gold Bars':'#854d0e', Lumber:'#166534', Steel:'#1f2937', Fuel:'#d1d5db', 'Steel Beams':'#4c1d95',
     Bread:'#78350f', Jewelry:'#831843', Furniture:'#4c1d95', Tools:'#164e63',
     'Iron + Coal':'#e2e8f0'
 };
@@ -298,7 +298,9 @@ var CHAIN = [
     { raw: 'Oil',   refined: 'Fuel',      finished: null,        f1: 'Fuel Mill',    f2: null,       mine: 'Oil Mine' },
     // Steel chain: Iron Bars + Coal -> Steel (two inputs)
     { raw: 'Iron',  refined: 'Iron Bars', finished: null,        f1: 'Iron Bars Mill', f2: null,  mine: 'Iron Mine', steel_chain: true },
-    { raw: 'Coal',  refined: 'Steel',     finished: null,        f1: 'Steel Mill',    f2: null,  mine: 'Coal Mine', iron_chain: true },
+    { raw: 'Coal',  refined: 'Steel',     finished: null,        f1: 'Steel Foundry',   f2: null,  mine: 'Coal Mine', iron_chain: true },
+    // Steel Beams chain: Steel -> Steel Beams (construction material)
+    { raw: 'Steel', refined: 'Steel Beams', finished: null,      f1: 'Steel Beams Mill', f2: 'Hardware Store', mine: null },
 ];
 
 var chMoney, chGini, chProcessing, chMoneyFlow;

@@ -23,7 +23,7 @@ simulation = {
 }
 
 # Agent behavior config
-AGENT_PRODUCE_CHANCE = 0.1
+AGENT_PRODUCE_CHANCE = 0.25
 AGENT_PROCESS_CHANCE = 0.2
 AGENT_FACTORY_CHANCE = 0.35
 AGENT_CONSUME_CHANCE = 0.4
@@ -46,6 +46,7 @@ PRODUCTION_CHAINS = {
     'Gold Bars': {'inputs': {'Gold': 2},            'output': 'Gold Bars', 'output_qty': 1, 'base_price': 1200.00},
     'Lumber':    {'inputs': {'Wood': 2},            'output': 'Lumber',    'output_qty': 1, 'base_price': 65.00},
     'Steel':     {'inputs': {'Iron Bars': 1, 'Coal': 1}, 'output': 'Steel', 'output_qty': 1, 'base_price': 280.00},
+    'Steel Beams': {'inputs': {'Steel': 1},            'output': 'Steel Beams', 'output_qty': 1, 'base_price': 520.00},
     'Fuel':      {'inputs': {'Oil': 2},             'output': 'Fuel',      'output_qty': 1, 'base_price': 40.00},
 }
 
@@ -78,7 +79,8 @@ SHOP_RECIPES = {
     'Bakery':      {'inputs': {'Flour': 3},         'output': 'Bread',     'buy_price_mult': 0.90, 'initial_cash': 5000,   'mill': 'Flour Mill'},
     'Jeweler':     {'inputs': {'Gold Bars': 2},      'output': 'Jewelry',   'buy_price_mult': 0.90, 'initial_cash': 10000,  'mill': 'Gold Bars Mill'},
     'Carpenter':   {'inputs': {'Lumber': 3},         'output': 'Furniture', 'buy_price_mult': 0.90, 'initial_cash': 5000,   'mill': 'Lumber Mill'},
-    'Blacksmith':  {'inputs': {'Steel': 2},          'output': 'Tools',     'buy_price_mult': 0.90, 'initial_cash': 5000,   'mill': 'Steel Mill'},
+    'Blacksmith':  {'inputs': {'Steel': 1},          'output': 'Tools',     'buy_price_mult': 0.90, 'initial_cash': 5000,   'mill': 'Steel Foundry'},
+    'Hardware Store': {'inputs': {'Steel': 1},       'output': 'Steel Beams', 'buy_price_mult': 0.90, 'initial_cash': 5000,   'mill': 'Steel Beams Mill'},
 }
 
 # Finished goods prices (what shops output — used by market and agents)
@@ -87,13 +89,13 @@ FINISHED_GOODS = {
     'Jewelry':   {'base_price': 2500.00,'happiness': 0.20},
     'Furniture': {'base_price': 150.00, 'happiness': 0.12},
     'Tools':     {'base_price': 400.00, 'happiness': 0.08},
-    'Steel':     {'base_price': 280.00, 'happiness': 0.06},
+    'Steel Beams': {'base_price': 520.00, 'happiness': 0.0},
     'Fuel':      {'base_price': 25.00,  'happiness': 0.04},
 }
 
 RAW_GOODS = ['Wheat', 'Iron', 'Gold', 'Oil', 'Wood', 'Coal']
-REFINED_GOODS = list(PRODUCTION_CHAINS.keys())  # Flour, Iron Bars, Gold Bars, Lumber, Steel, Fuel
-FINISHED_LIST = list(FINISHED_GOODS.keys())       # Bread, Jewelry, Furniture, Tools, Steel, Fuel
+REFINED_GOODS = ['Flour', 'Iron Bars', 'Gold Bars', 'Lumber', 'Steel', 'Fuel', 'Steel Beams']
+FINISHED_LIST = ['Bread', 'Jewelry', 'Furniture', 'Tools', 'Steel Beams']
 ALL_GOODS = RAW_GOODS + REFINED_GOODS + FINISHED_LIST
 
 
@@ -558,7 +560,7 @@ def apply_new_competitor(conn):
         return True
     base = PRODUCTION_CHAINS[good]['base_price']
     fee = base * random.uniform(0.03, 0.08)
-    factory_name = good + ' Mill'
+    factory_name = good + ' Foundry'
     cursor.execute('''
         INSERT INTO factories (name, produces, owner_id, fee_per_unit, level, active)
         VALUES (?, ?, ?, ?, 1, 1)
@@ -852,7 +854,7 @@ def agent_build_factory(conn, agent):
     # Build cost is real — agents pay to construct infrastructure
     if cost > 0 and agent['balance'] < cost:
         return None
-    factory_name = target_good + ' Mill'
+    factory_name = target_good + ' Foundry'
     cursor.execute('INSERT OR IGNORE INTO factories (name, produces, owner_id, fee_per_unit, level, active) VALUES (?, ?, ?, ?, 1, 1)',
                   (factory_name, target_good, agent['id'], round(fee, 2)))
     if cursor.rowcount == 0:
@@ -1573,7 +1575,8 @@ def simulation_tick():
     if simulation['tick_count'] % 20 == 0:
         update_reputations(conn)
 
-    # Natural drift
+    # Mining fee boost: lower fees to encourage more mining activity
+    cursor.execute('UPDATE mines SET fee_per_unit = MAX(0.5, fee_per_unit * 0.85) WHERE active = 1 AND fee_per_unit > 2.0')
     for good in market_goods:
         cursor.execute('''
             UPDATE market SET
@@ -1589,7 +1592,8 @@ def simulation_tick():
     cursor.execute('SELECT * FROM shops WHERE active = 1 AND mill_id IS NOT NULL')
     shop_mills = [dict(row) for row in cursor.fetchall()]
     for shop in shop_mills:
-        if random.random() > 0.30:  # 70% chance per tick
+        skip_chance = 0.80 if shop['name'] == 'Hardware Store' else 0.70
+        if random.random() > skip_chance:
             continue
         recipe = SHOP_RECIPES.get(shop['name'])
         if not recipe:
@@ -1624,6 +1628,8 @@ def simulation_tick():
         # Produce refined output
         output_qty = chain['output_qty']
         efficiency = 0.85 + (mill['level'] * 0.12)
+        if shop['name'] == 'Hardware Store':
+            efficiency = 0.90 + (mill['level'] * 0.15)  # higher yield
         output_qty = max(1, int(output_qty * efficiency))
         shop_inv[refined_good] = shop_inv.get(refined_good, 0) + output_qty
         cursor.execute('UPDATE shops SET inventory = ? WHERE id = ?',
@@ -1654,6 +1660,8 @@ def simulation_tick():
                 if shop_inv[input_good] <= 0:
                     del shop_inv[input_good]
             output_qty = 1
+            if shop['name'] == 'Hardware Store':
+                output_qty = 2  # hardware store produces more per batch
             shop_inv[output] = shop_inv.get(output, 0) + output_qty
             cursor.execute('UPDATE shops SET inventory = ? WHERE id = ?',
                            (json.dumps(shop_inv), shop['id']))
@@ -1707,7 +1715,7 @@ def simulation_tick():
     cursor.execute('SELECT * FROM mines WHERE active = 1')
     mines = cursor.fetchall()
     for mine in mines:
-        if random.random() > 0.25:  # 75% chance to extract per tick
+        if random.random() > 0.35:  # 65% chance to extract per tick
             continue
         mine_data = MINES.get(mine['name'], {})
         if not mine_data:
