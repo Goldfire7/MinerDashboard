@@ -585,8 +585,9 @@ def apply_shop_opens(conn):
         return True
     shop_name = random.choice(available)
     recipe = SHOP_RECIPES[shop_name]
-    # Shops are publicly owned — no agent balance is deducted
-    owner_id = None  # public investor (no single owner)
+    cursor.execute('SELECT * FROM agents ORDER BY RANDOM() LIMIT 1')
+    owner = cursor.fetchone()
+    owner_id = owner['id'] if owner else None
     cash = recipe['initial_cash']
     cursor.execute('''
         INSERT INTO shops (name, input_good, output_good, buy_price_mult, cash, inventory, active)
@@ -617,7 +618,7 @@ def apply_shop_opens(conn):
     owner_name = 'public investor'
     conn.commit()
     record_event(conn, 'Shop Opens', 'positive',
-                 '\U0001f3ea %s opens! (public investor)' % shop_name,
+                 '\U0001f3ea %s opens! (%s)' % (shop_name, owner['name'] if owner else 'public'),
                  {'shop_id': sid, 'shop': shop_name})
     return True
 
