@@ -973,81 +973,77 @@ def agent_process(conn, agent, market_goods):
     return None
 
 def agent_sell_to_shop(conn, agent, market_goods):
-    """Agents sell goods (raw or refined) to shops. Shops use mills to refine raw materials."""
-    if random.random() > 0.25:
+    """Agents sell goods (raw or refined) to shops. Shops use mills to refine raw materials.
+    Agents try to sell as many goods as possible per tick, prioritizing goods shops actively need."""
+    if random.random() > 0.35:
         return None
     cursor = conn.cursor()
     inv = parse_inventory(agent['inventory'])
     prices = get_market_dict(market_goods)
-    # Collect goods the agent has (raw or refined)
-    has_goods = [g for g, qty in inv.items() if qty > 0]
-    if not has_goods:
-        return None
-    random.shuffle(has_goods)
-    target_good = None
-    for good in has_goods:
-        if good in RAW_GOODS or good in REFINED_GOODS:
-            target_good = good
-            break
-    if not target_good:
-        return None
-    qty = min(random.randint(1, 3), inv.get(target_good, 0))
-    if qty == 0:
-        return None
-    # Find shops that want this good (shops whose mill consumes it as raw input)
+
     cursor.execute('SELECT * FROM shops WHERE active = 1 AND mill_id IS NOT NULL AND cash > 0')
     shops = [dict(row) for row in cursor.fetchall()]
     if not shops:
         return None
-    candidates = []
+
+    # Build a map: good -> list of shops that want it (by mill input)
+    good_to_shops = {}
     for shop in shops:
         cursor.execute('SELECT * FROM factories WHERE id = ? AND active = 1', (shop['mill_id'],))
         mill = cursor.fetchone()
         if not mill:
             continue
-        mill_output = mill['produces']  # e.g. 'Gold Bars'
-        chain = PRODUCTION_CHAINS.get(mill_output)
+        chain = PRODUCTION_CHAINS.get(mill['produces'])
         if not chain:
             continue
-        raw_inputs = list(chain['inputs'].keys())  # e.g. ['Gold']
-        if target_good not in raw_inputs:
+        for raw_good in chain['inputs'].keys():
+            if raw_good not in good_to_shops:
+                good_to_shops[raw_good] = []
+            good_to_shops[raw_good].append((shop, mill))
+
+    # Try selling each good the agent has that a shop needs
+    sold_any = False
+    for good, have_qty in list(inv.items()):
+        if have_qty <= 0 or good not in good_to_shops:
             continue
-        market_p = prices.get(target_good, 0)
+        candidates = good_to_shops[good]
+        qty = min(random.randint(1, 3), have_qty)
+        if qty == 0:
+            continue
+        shop, mill = random.choice(candidates)
+        market_p = prices.get(good, 0)
         unit_price = market_p * shop['buy_price_mult']  # 90% of market
-        if unit_price > 0:
-            candidates.append((shop, target_good, unit_price))
-    if not candidates:
-        return None
-    shop, target_good, unit_price = random.choice(candidates)
-    total = unit_price * qty
-    if shop['cash'] < total:
-        qty = max(1, int(shop['cash'] / unit_price))
+        if unit_price <= 0:
+            continue
         total = unit_price * qty
-    if qty == 0 or total <= 0:
-        return None
-    inv[target_good] -= qty
-    if inv[target_good] <= 0:
-        del inv[target_good]
-    cursor.execute('UPDATE agents SET inventory = ? WHERE id = ?',
-                   (inventory_to_json(inv), agent['id']))
-    cursor.execute('UPDATE agents SET balance = balance + ? WHERE id = ?',
-                   (total, agent['id']))
-    cursor.execute('SELECT inventory FROM shops WHERE id = ?', (shop['id'],))
-    shop_inv_raw = cursor.fetchone()['inventory'] or '{}'
-    try:
-        shop_inv = json.loads(shop_inv_raw)
-    except:
-        shop_inv = {}
-    shop_inv[target_good] = shop_inv.get(target_good, 0) + qty
-    cursor.execute('UPDATE shops SET cash = cash - ?, inventory = ? WHERE id = ?',
-                  (total, json.dumps(shop_inv), shop['id']))
-    tx_desc = 'Sold %dx %s to %s' % (qty, target_good, shop['name'])
-    cursor.execute(
-        'INSERT INTO transactions (from_agent, to_agent, amount, good_name, quantity, transaction_type, description, tick) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        (agent['id'], -shop['id'], total, target_good, qty, 'shop_sell', tx_desc, simulation['tick_count']))
-    conn.commit()
-    return True
+        if shop['cash'] < total:
+            qty = max(1, int(shop['cash'] / unit_price))
+            total = unit_price * qty
+        if qty == 0 or total <= 0:
+            continue
+        inv[good] -= qty
+        if inv[good] <= 0:
+            del inv[good]
+        cursor.execute('UPDATE agents SET inventory = ? WHERE id = ?',
+                       (inventory_to_json(inv), agent['id']))
+        cursor.execute('UPDATE agents SET balance = balance + ? WHERE id = ?',
+                       (total, agent['id']))
+        cursor.execute('SELECT inventory FROM shops WHERE id = ?', (shop['id'],))
+        shop_inv_raw = cursor.fetchone()['inventory'] or '{}'
+        try:
+            shop_inv = json.loads(shop_inv_raw)
+        except:
+            shop_inv = {}
+        shop_inv[good] = shop_inv.get(good, 0) + qty
+        cursor.execute('UPDATE shops SET cash = cash - ?, inventory = ? WHERE id = ?',
+                      (total, json.dumps(shop_inv), shop['id']))
+        tx_desc = 'Sold %dx %s to %s' % (qty, good, shop['name'])
+        cursor.execute(
+            'INSERT INTO transactions (from_agent, to_agent, amount, good_name, quantity, transaction_type, description, tick) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            (agent['id'], -shop['id'], total, good, qty, 'shop_sell', tx_desc, simulation['tick_count']))
+        conn.commit()
+        sold_any = True
 
 
 def agent_sell_to_market(conn, agent, market_goods):
@@ -1143,66 +1139,48 @@ def agent_buy_from_shop(conn, agent, market_goods):
     conn.commit()
     return 'shop_buy:%s' % output_good
 
-def agent_consume(conn, agent, market_goods):
+def agent_sell_finished(conn, agent, market_goods):
+    """Agents sell finished goods (Bread, Jewelry, Furniture, Tools, Steel Beams) to the market for profit.
+    No more happiness from consumption — agents now just sell finished goods for money."""
     if random.random() > AGENT_CONSUME_CHANCE:
         return None
     cursor = conn.cursor()
     inv = parse_inventory(agent['inventory'])
-    available = [g for g in market_goods if inv.get(g['good_name'], 0) > 0
-                and g['good_name'] in FINISHED_GOODS]
-    if available:
-        good = random.choice(available)
-        gname = good['good_name']
-        qty = min(random.randint(1, 2), inv[gname])
-        inv[gname] -= qty
-        if inv[gname] <= 0:
-            del inv[gname]
-        happiness = FINISHED_GOODS[gname]['happiness']
-        cursor.execute('UPDATE agents SET inventory = ?, happiness = MIN(1.0, happiness + ?) WHERE id = ?',
-                       (inventory_to_json(inv), happiness * qty, agent['id']))
-        tx_desc = 'Consumed %dx %s' % (qty, gname)
+    prices = get_market_dict(market_goods)
+
+    # Find finished goods the agent has
+    finished_have = [(g, qty) for g, qty in inv.items() if g in FINISHED_GOODS and qty > 0]
+    if not finished_have:
+        return None
+
+    sold_any = False
+    for good_name, have_qty in finished_have:
+        qty = min(random.randint(1, 3), have_qty)
+        if qty == 0:
+            continue
+        price = prices.get(good_name, 0)
+        if price <= 0:
+            continue
+        unit_price = price * 0.85  # sell at 85% of market
+        total = unit_price * qty
+        if total <= 0:
+            continue
+        inv[good_name] -= qty
+        if inv[good_name] <= 0:
+            del inv[good_name]
+        cursor.execute('UPDATE agents SET inventory = ?, balance = balance + ? WHERE id = ?',
+                       (inventory_to_json(inv), total, agent['id']))
+        cursor.execute('UPDATE market SET demand = demand + ? WHERE good_name = ?',
+                       (qty, good_name))
+        tx_desc = 'Sold %dx %s to market' % (qty, good_name)
         cursor.execute(
             'INSERT INTO transactions (from_agent, to_agent, amount, good_name, quantity, transaction_type, description, tick) '
             'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            (agent['id'], agent['id'], 0, gname, qty, 'consumption', tx_desc, simulation['tick_count']))
+            (agent['id'], -1, total, good_name, qty, 'finished_sell', tx_desc, simulation['tick_count']))
         conn.commit()
-        return 'consume:%s' % gname
-    budget = agent['balance'] * 0.40
-    if budget < 5:
-        return None
-    affordable = [g for g in market_goods if g['good_name'] in FINISHED_GOODS
-                 and g['current_price'] <= budget]
-    if not affordable:
-        return None
-    affordable.sort(key=lambda g: g['current_price'])
-    good = affordable[0]
-    gname = good['good_name']
-    max_q = min(3, int(budget / good['current_price']))
-    if max_q == 0:
-        return None
-    quantity = random.randint(1, max_q)
-    total = good['current_price'] * quantity
-    cursor.execute('SELECT id FROM agents WHERE id != ? LIMIT 1', (agent['id'],))
-    row = cursor.fetchone()
-    if not row:
-        return None
-    cursor.execute('UPDATE agents SET balance = balance - ? WHERE id = ?', (total, agent['id']))
-    cursor.execute('UPDATE agents SET balance = balance + ? WHERE id = ?', (total, row['id']))
-    cursor.execute('UPDATE market SET supply = MAX(0, supply - ?), demand = demand + ? WHERE good_name = ?',
-                   (quantity, quantity, gname))
-    inv[gname] = inv.get(gname, 0) + quantity
-    cursor.execute('UPDATE agents SET inventory = ? WHERE id = ?',
-                   (inventory_to_json(inv), agent['id']))
-    happiness = FINISHED_GOODS[gname]['happiness']
-    cursor.execute('UPDATE agents SET happiness = MIN(1.0, happiness + ?) WHERE id = ?',
-                   (happiness * quantity, agent['id']))
-    tx_desc = 'Bought %dx %s' % (quantity, gname)
-    cursor.execute(
-        'INSERT INTO transactions (from_agent, to_agent, amount, good_name, quantity, transaction_type, description, tick) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        (agent['id'], row['id'], -total, gname, quantity, 'purchase', tx_desc, simulation['tick_count']))
-    conn.commit()
-    return 'purchase:%s' % gname
+        sold_any = True
+
+    return 'sold_finished' if sold_any else None
 
 def agent_trade(conn, agent, market_goods):
     if random.random() > AGENT_TRADE_CHANCE:
@@ -1566,13 +1544,13 @@ def simulation_tick():
             continue
 
         if agent['agent_type'] == 'processor':
-            actions = [('produce', 0.15), ('factory', 0.25), ('process', 0.10), ('sell_shop', 0.25), ('buy_shop', 0.10), ('consume', 0.05), ('trade', 0.05), ('build', 0.05), ('contract', 0.05)]
+            actions = [('produce', 0.15), ('factory', 0.25), ('process', 0.10), ('sell_shop', 0.25), ('buy_shop', 0.10), ('sell_finished', 0.05), ('trade', 0.05), ('build', 0.05), ('contract', 0.05)]
         elif agent['agent_type'] == 'producer':
-            actions = [('produce', 0.35), ('factory', 0.10), ('process', 0.10), ('sell_shop', 0.25), ('buy_shop', 0.08), ('consume', 0.05), ('trade', 0.02), ('build', 0.03), ('upgrade', 0.02), ('contract', 0.05)]
+            actions = [('produce', 0.30), ('factory', 0.08), ('process', 0.08), ('sell_shop', 0.32), ('buy_shop', 0.07), ('consume', 0.05), ('trade', 0.02), ('build', 0.03), ('upgrade', 0.02), ('contract', 0.05)]
         elif agent['agent_type'] == 'trader':
             actions = [('produce', 0.08), ('factory', 0.05), ('process', 0.05), ('sell_shop', 0.30), ('buy_shop', 0.15), ('consume', 0.10), ('trade', 0.20), ('build', 0.03), ('upgrade', 0.02), ('contract', 0.05)]
         else:
-            actions = [('produce', 0.10), ('factory', 0.05), ('process', 0.05), ('sell_shop', 0.05), ('buy_shop', 0.20), ('consume', 0.35), ('trade', 0.10), ('build', 0.03), ('upgrade', 0.02), ('contract', 0.05)]
+            actions = [('produce', 0.10), ('factory', 0.05), ('process', 0.05), ('sell_shop', 0.05), ('buy_shop', 0.20), ('sell_finished', 0.40), ('trade', 0.10), ('build', 0.03), ('upgrade', 0.02), ('contract', 0.05)]
 
         action = random.choices([a[0] for a in actions], weights=[a[1] for a in actions])[0]
 
@@ -1589,7 +1567,9 @@ def simulation_tick():
         elif action == 'buy_shop':
             agent_buy_from_shop(conn, agent, market_goods)
         elif action == 'consume':
-            agent_consume(conn, agent, market_goods)
+            result = agent_sell_finished(conn, agent, market_goods)
+            if not result:
+                agent_sell_to_market(conn, agent, market_goods)
         elif action == 'build':
             result = agent_build_factory(conn, agent)
             if not result:
@@ -1625,7 +1605,7 @@ def simulation_tick():
     cursor.execute('SELECT * FROM shops WHERE active = 1 AND mill_id IS NOT NULL')
     shop_mills = [dict(row) for row in cursor.fetchall()]
     for shop in shop_mills:
-        skip_chance = 0.80 if shop['name'] == 'Hardware Store' else 0.70
+        skip_chance = 0.90 if shop['name'] == 'Hardware Store' else 0.75
         if random.random() > skip_chance:
             continue
         recipe = SHOP_RECIPES.get(shop['name'])
@@ -1733,9 +1713,6 @@ def simulation_tick():
         agent_inv[output_good] = agent_inv.get(output_good, 0) + qty
         cursor.execute('UPDATE agents SET inventory = ?, balance = balance - ? WHERE id = ?',
                        (inventory_to_json(agent_inv), total, agent['id']))
-        happiness = FINISHED_GOODS[output_good]['happiness']
-        cursor.execute('UPDATE agents SET happiness = MIN(1.0, happiness + ?) WHERE id = ?',
-                       (happiness, agent['id']))
         tx_desc = '%s bought %dx %s from %s' % (agent['name'], qty, output_good, shop['name'])
         cursor.execute(
             'INSERT INTO transactions (from_agent, to_agent, amount, good_name, quantity, transaction_type, description, tick) '
