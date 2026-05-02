@@ -48,10 +48,15 @@
             padding: 0 4px;
         }
         
-        .header-left { flex: 1; min-width: 200px; }
+        .header-left { flex-shrink: 0; }
         .header-right { flex-shrink: 0; }
         
-        .header-center { display: none; } /* Hidden, title moved to header-left */
+        .header-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
         
         .header-title {
             color: var(--text-primary);
@@ -802,20 +807,27 @@
             
             header {
                 grid-template-columns: 1fr;
-                gap: 10px;
-                margin-bottom: 14px;
+                justify-items: center;
             }
             
+            .header-left,
+            .header-center,
             .header-right {
                 justify-self: center;
                 width: 100%;
-                grid-column: auto;
             }
             
             .header-center {
-                justify-self: center;
+                order: -1;
+                align-items: center;
+            }
+            
+            .header-left {
                 order: 0;
-                grid-column: auto;
+            }
+            
+            .header-right {
+                display: none;
             }
             
             .header-card, .nav-card {
@@ -1146,14 +1158,6 @@
     
     <header>
         <div class="header-left">
-            <div class="header-title">⛏️ CK-Box Dashboard</div>
-            <div class="header-subtitle">
-                <span class="dot" id="statusDot"></span>
-                <span id="headerNetwork">--</span>
-                <span id="headerNetDiff">--</span>
-            </div>
-        </div>
-        <div class="header-right">
             <div class="nav-card">
                 <div class="label">Navigation</div>
                 <div class="links">
@@ -1167,6 +1171,15 @@
                 </div>
             </div>
         </div>
+        <div class="header-center">
+            <div class="header-title">⛏️ CK-Box Dashboard</div>
+            <div class="header-subtitle">
+                <span class="dot" id="statusDot"></span>
+                <span id="headerNetwork">--</span>
+                <span id="headerNetDiff">--</span>
+            </div>
+        </div>
+        <div class="header-right"></div>
     </header>
     
     <div class="combined-stats" id="statsGrid">
