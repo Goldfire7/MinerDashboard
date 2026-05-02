@@ -1459,7 +1459,8 @@
             document.getElementById('headerNetwork').textContent = formatNetworkHashrate(data.network_hashrate);
             document.getElementById('headerNetDiff').textContent = formatNetworkDiff(data.network_diff);
             document.getElementById('avgHashrate').textContent = formatHashrate(data.total_avg_hashrate);
-            document.getElementById('totalHashrate').textContent = formatHashrate(data.total_current_hashrate);
+            const minerTotal = (data.miners || []).reduce((sum, m) => sum + (m.current_hashrate || 0), 0);
+            document.getElementById('totalHashrate').textContent = formatHashrate(minerTotal);
             
             // Rejection rate
             if (data.rejection_rate != null) {
