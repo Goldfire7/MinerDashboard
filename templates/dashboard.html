@@ -40,7 +40,7 @@
         /* Header */
         header {
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 12px;
@@ -1255,7 +1255,7 @@
     
     <div class="earnings-section" id="earningsSection" style="display:none;">
         <div class="section-header">
-            <h3>💰 Earnings History (Last 30 Days)</h3>
+            <h3>💰 Earnings History (Last 7 Days)</h3>
             <span class="label" style="color: var(--text-muted); font-size: 11px;">CKB &amp; USD Value</span>
         </div>
         <div class="chart-wrapper">
@@ -1880,8 +1880,8 @@
         }
         
         function updateEarningsChart(data) {
-            // Use last 30 days
-            const recent = data.slice(-30);
+            // Use last 7 days
+            const recent = data.slice(-7);
             
             const labels = recent.map(d => {
                 // Parse YYYY-MM-DD as local date to match 2miners calendar days
