@@ -40,7 +40,7 @@
         /* Header */
         header {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
             flex-wrap: wrap;
             gap: 12px;
@@ -48,7 +48,7 @@
             padding: 0 4px;
         }
         
-        .header-left { flex-shrink: 0; }
+        .header-left { flex-shrink: 0; width: 1px; } /* invisible spacer for centering */
         .header-right { flex-shrink: 0; }
         
         .header-center {
@@ -1157,7 +1157,16 @@
     </div>
     
     <header>
-        <div class="header-left">
+        <div class="header-left"></div>
+        <div class="header-center">
+            <div class="header-title">⛏️ CK-Box Dashboard</div>
+            <div class="header-subtitle">
+                <span class="dot" id="statusDot"></span>
+                <span id="headerNetwork">--</span>
+                <span id="headerNetDiff">--</span>
+            </div>
+        </div>
+        <div class="header-right">
             <div class="nav-card">
                 <div class="label">Navigation</div>
                 <div class="links">
@@ -1171,15 +1180,6 @@
                 </div>
             </div>
         </div>
-        <div class="header-center">
-            <div class="header-title">⛏️ CK-Box Dashboard</div>
-            <div class="header-subtitle">
-                <span class="dot" id="statusDot"></span>
-                <span id="headerNetwork">--</span>
-                <span id="headerNetDiff">--</span>
-            </div>
-        </div>
-        <div class="header-right"></div>
     </header>
     
     <div class="combined-stats" id="statsGrid">
