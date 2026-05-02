@@ -355,6 +355,11 @@ _network_current_cache = None
 _network_current_fetch_time = 0
 NETWORK_CURRENT_CACHE_SECONDS = 60  # Cache for 1 minute
 
+# Network difficulty cache
+_network_difficulty_cache = None
+_network_difficulty_fetch_time = 0
+NETWORK_DIFFICULTY_CACHE_SECONDS = 3600  # Cache for 1 hour
+
 def fetch_ckb_price():
     """Fetch CKB price from CoinGecko with rate limiting."""
     global _last_price_fetch, _price_cache
