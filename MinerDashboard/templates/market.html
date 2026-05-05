@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Data - CKB</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #1e2433;
+            --border: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-red: #f85149;
+            --shadow: 0 4px 12px rgba(0,0,0,0.3);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1f2e 0%, var(--bg-primary) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 16px;
+            line-height: 1.5;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        h1 { 
+            color: var(--accent-green); 
+            font-size: clamp(20px, 5vw, 26px); 
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .back-link {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 10px;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid rgba(88, 166, 255, 0.2);
+            transition: all 0.2s;
+        }
+        
+        .back-link:hover {
+            background: rgba(88, 166, 255, 0.2);
+        }
+        
+        .market-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            max-width: 1200px;
+            margin: 0 auto 20px;
+        }
+        
+        .market-card {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 18px 16px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            text-align: center;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+        
+        .market-card:hover {
+            border-color: var(--accent-green);
+            transform: translateY(-2px);
+        }
+        
+        .market-card .label {
+            color: var(--text-secondary);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        
+        .market-card .value {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .market-card .value.price { color: var(--accent-green); }
+        .market-card .value.supply { color: var(--accent-blue); }
+        .market-card .value.cap { color: var(--accent-yellow); }
+        
+        .market-card .sub-value {
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-top: 6px;
+        }
+        
+        .chart-section {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            margin: 0 auto 20px;
+            max-width: 1200px;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        
+        .chart-title {
+            color: var(--accent-green);
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(90deg, #238636, #2ea043);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        
+        .refresh-btn:hover {
+            background: linear-gradient(90deg, #2ea043, #3fb950);
+        }
+        
+        .refresh-btn:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+        }
+        
+        /* Chart wrapper - fixed height */
+        .chart-wrapper {
+            position: relative;
+            height: 280px;
+            width: 100%;
+        }
+        
+        #priceChart {
+            width: 100% !important;
+            height: 280px !important;
+        }
+        
+        .chart-footer {
+            text-align: center;
+            margin-top: 12px;
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+        
+        .loading { 
+            color: var(--text-secondary); 
+            text-align: center; 
+            padding: 50px 20px;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .loading::after {
+            content: '';
+            width: 28px;
+            height: 28px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .error {
+            color: var(--accent-red);
+            text-align: center;
+            padding: 50px 20px;
+            font-size: 14px;
+            background: rgba(248, 81, 73, 0.08);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(248, 81, 73, 0.2);
+        }
+        
+        .last-updated {
+            color: var(--text-muted);
+            font-size: 11px;
+            text-align: center;
+            margin-top: 16px;
+        }
+        
+        /* Mobile */
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            
+            .market-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+            
+            .market-card {
+                padding: 14px 12px;
+            }
+            
+            .market-card .value {
+                font-size: 18px;
+            }
+            
+            .market-card .label {
+                font-size: 10px;
+            }
+            
+            .chart-section {
+                padding: 14px;
+            }
+            
+            .chart-wrapper {
+                height: 220px;
+            }
+            
+            #priceChart {
+                height: 220px !important;
+            }
+            
+            .chart-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+        }
+        
+        @media (max-width: 400px) {
+            .market-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📈 Market Data</h1>
+        <a href="/" class="back-link">← Dashboard</a>
+    </header>
+    
+    <div id="marketContent">
+        <div class="loading">Loading market data...</div>
+    </div>
+    
+    <div class="chart-section" id="priceChartSection" style="display:none;">
+        <div class="chart-header">
+            <div class="chart-title">CKB Price History (30 Days)</div>
+            <button class="refresh-btn" onclick="loadMarketData()" id="refreshBtn">↻ Refresh</button>
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="priceChart"></canvas>
+        </div>
+        <div class="chart-footer">Data from CoinGecko • Hover chart for exact prices</div>
+    </div>
+    
+    <div class="last-updated" id="lastUpdated"></div>
+    
+    <script>
+        function formatNumber(num, decimals = 2) {
+            if (!num && num !== 0) return '--';
+            if (num >= 1e12) return (num / 1e12).toFixed(decimals) + ' T';
+            if (num >= 1e9) return (num / 1e9).toFixed(decimals) + ' B';
+            if (num >= 1e6) return (num / 1e6).toFixed(decimals) + ' M';
+            if (num >= 1e3) return (num / 1e3).toFixed(decimals) + ' K';
+            return num.toLocaleString(undefined, { maximumFractionDigits: decimals });
+        }
+        
+        function formatCurrency(num) {
+            if (!num && num !== 0) return '--';
+            if (num >= 1e12) return '$' + (num / 1e12).toFixed(2) + 'T';
+            if (num >= 1e9) return '$' + (num / 1e9).toFixed(2) + 'B';
+            if (num >= 1e6) return '$' + (num / 1e6).toFixed(2) + 'M';
+            if (num >= 1e3) return '$' + (num / 1e3).toFixed(2) + 'K';
+            return '$' + num.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        }
+        
+        function loadMarketData() {
+            const btn = document.getElementById('refreshBtn');
+            const content = document.getElementById('marketContent');
+            
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '⟳ Loading...';
+            }
+            
+            fetch('/api/market/data')
+                .then(r => r.json())
+                .then(data => {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = '↻ Refresh';
+                    }
+                    
+                    if (data.error) {
+                        content.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                        return;
+                    }
+                    
+                    const circulating = data.circulating_supply || 0;
+                    const total = data.total_supply || 1;
+                    const circulatingPercent = ((circulating / total) * 100).toFixed(1);
+                    
+                    content.innerHTML = `
+                        <div class="market-grid">
+                            <div class="market-card">
+                                <div class="label">CKB Price</div>
+                                <div class="value price">$${data.ckb_price_usd?.toFixed(6) || '--'}</div>
+                                <div class="sub-value">USD per CKB</div>
+                            </div>
+                            
+                            <div class="market-card">
+                                <div class="label">Market Cap</div>
+                                <div class="value cap">${formatCurrency(data.market_cap)}</div>
+                                <div class="sub-value">Circulating × Price</div>
+                            </div>
+                            
+                            <div class="market-card">
+                                <div class="label">Circulating Supply</div>
+                                <div class="value supply">${formatNumber(data.circulating_supply, 2)}</div>
+                                <div class="sub-value">${circulatingPercent}% of total</div>
+                            </div>
+                            
+                            <div class="market-card">
+                                <div class="label">Total Supply</div>
+                                <div class="value">${formatNumber(data.total_supply, 2)}</div>
+                                <div class="sub-value">All CKB ever created</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    const updated = new Date(data.updated_at);
+                    const lastEl = document.getElementById('lastUpdated');
+                    if (lastEl) lastEl.textContent = `Last updated: ${updated.toLocaleString()}`;
+                })
+                .catch(err => {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = '↻ Refresh';
+                    }
+                    content.innerHTML = `<div class="error">Failed to load market data</div>`;
+                    console.error(err);
+                });
+        }
+        
+        let priceChart = null;
+        
+        async function loadPriceHistory() {
+            try {
+                const response = await fetch('/api/market/price_history');
+                if (!response.ok) throw new Error('Failed to fetch');
+                
+                const data = await response.json();
+                if (data.error || !Array.isArray(data) || data.length === 0) {
+                    return;
+                }
+                
+                document.getElementById('priceChartSection').style.display = 'block';
+                renderPriceChart(data);
+                
+            } catch (err) {
+                console.error('Price history error:', err);
+            }
+        }
+        
+        function renderPriceChart(data) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            
+            const labels = data.map(d => {
+                const date = new Date(d.date);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            });
+            
+            const prices = data.map(d => d.price);
+            
+            const currentPrice = prices[prices.length - 1];
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+            const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+            
+            const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+            gradient.addColorStop(0, 'rgba(63, 185, 80, 0.3)');
+            gradient.addColorStop(1, 'rgba(63, 185, 80, 0.02)');
+            
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'CKB Price (USD)',
+                        data: prices,
+                        borderColor: '#3fb950',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: '#3fb950',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#161b22',
+                            borderColor: '#30363d',
+                            borderWidth: 1,
+                            titleColor: '#e6edf3',
+                            bodyColor: '#8b949e',
+                            padding: 12,
+                            callbacks: {
+                                label: ctx => `$${ctx.parsed.y.toFixed(6)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(48, 54, 61, 0.5)', drawBorder: false },
+                            ticks: { color: '#6e7681', maxTicksLimit: 7 }
+                        },
+                        y: {
+                            grid: { color: 'rgba(48, 54, 61, 0.5)', drawBorder: false },
+                            ticks: {
+                                color: '#6e7681',
+                                callback: v => '$' + v.toFixed(4)
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        loadMarketData();
+        loadPriceHistory();
+    </script>
+</body>
+</html>

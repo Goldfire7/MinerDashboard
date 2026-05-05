@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transactions - CKB</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #1e2433;
+            --border: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-purple: #a371f7;
+            --accent-red: #f85149;
+            --shadow: 0 4px 12px rgba(0,0,0,0.3);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1f2e 0%, var(--bg-primary) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 16px;
+            line-height: 1.5;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        h1 { 
+            color: var(--accent-purple); 
+            font-size: clamp(20px, 5vw, 26px); 
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .back-link {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 10px;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid rgba(88, 166, 255, 0.2);
+            transition: all 0.2s;
+        }
+        
+        .back-link:hover {
+            background: rgba(88, 166, 255, 0.2);
+        }
+        
+        .tx-container {
+            background: linear-gradient(145deg, var(--bg-tertiary), var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .tx-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        
+        .tx-title {
+            color: var(--accent-purple);
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .tx-count {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(90deg, #238636, #2ea043);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        
+        .refresh-btn:hover { 
+            background: linear-gradient(90deg, #2ea043, #3fb950);
+        }
+        
+        .refresh-btn:disabled { 
+            background: var(--text-muted); 
+            cursor: not-allowed;
+        }
+        
+        /* Table wrapper for horizontal scroll */
+        .table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -4px;
+            padding: 0 4px;
+        }
+        
+        .tx-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 580px;
+        }
+        
+        .tx-table th {
+            text-align: left;
+            padding: 12px 10px;
+            color: var(--text-secondary);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .tx-table td {
+            padding: 14px 10px;
+            border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+            font-size: 14px;
+            vertical-align: middle;
+        }
+        
+        .tx-table tbody tr {
+            transition: background 0.15s;
+        }
+        
+        .tx-table tbody tr:hover td {
+            background: rgba(163, 113, 247, 0.06);
+        }
+        
+        .tx-hash {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        
+        .tx-hash:hover { text-decoration: underline; }
+        
+        .block-num {
+            color: var(--text-secondary);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        
+        .time-ago {
+            color: var(--text-secondary);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        
+        .capacity {
+            color: var(--accent-green);
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        
+        .loading { 
+            color: var(--text-secondary); 
+            text-align: center; 
+            padding: 50px 20px;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .loading::after {
+            content: '';
+            width: 28px;
+            height: 28px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-purple);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .error {
+            color: var(--accent-red);
+            text-align: center;
+            padding: 50px 20px;
+            font-size: 14px;
+            background: rgba(248, 81, 73, 0.08);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(248, 81, 73, 0.2);
+        }
+        
+        .last-updated {
+            color: var(--text-muted);
+            font-size: 11px;
+            text-align: center;
+            margin-top: 16px;
+        }
+        
+        /* Mobile */
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            
+            .tx-container {
+                padding: 14px;
+            }
+            
+            .tx-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            
+            .header-right {
+                justify-content: space-between;
+            }
+            
+            .tx-table {
+                min-width: 520px;
+            }
+            
+            .tx-table th, 
+            .tx-table td {
+                padding: 10px 8px;
+                font-size: 13px;
+            }
+            
+            .tx-table th {
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🔄 Transactions</h1>
+        <a href="/" class="back-link">← Dashboard</a>
+    </header>
+    
+    <div class="tx-container">
+        <div class="tx-header">
+            <div class="tx-title">Latest CKB Transactions</div>
+            <div class="header-right">
+                <span class="tx-count" id="txCount"></span>
+                <button class="refresh-btn" onclick="loadTransactions()" id="refreshBtn">↻ Refresh</button>
+            </div>
+        </div>
+        
+        <div id="txContent">
+            <div class="loading">Loading transactions...</div>
+        </div>
+        
+        <div class="last-updated" id="lastUpdated"></div>
+    </div>
+    
+    <script>
+        function formatTimeAgo(seconds) {
+            if (seconds < 60) return 'just now';
+            if (seconds < 3600) return Math.floor(seconds / 60) + ' min ago';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + ' hr ago';
+            return Math.floor(seconds / 86400) + ' days ago';
+        }
+        
+        function loadTransactions() {
+            const btn = document.getElementById('refreshBtn');
+            const content = document.getElementById('txContent');
+            
+            btn.disabled = true;
+            btn.textContent = '⟳ Loading...';
+            
+            fetch('/api/transactions')
+                .then(r => r.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.textContent = '↻ Refresh';
+                    
+                    if (data.error) {
+                        content.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                        return;
+                    }
+                    
+                    const txs = data.transactions || [];
+                    document.getElementById('txCount').textContent = `${txs.length} transactions`;
+                    
+                    if (txs.length === 0) {
+                        content.innerHTML = `<div class="loading">No transactions found</div>`;
+                        return;
+                    }
+                    
+                    let html = `<div class="table-wrapper"><table class="tx-table"><thead><tr><th>Transaction Hash</th><th>Block</th><th>Time</th><th>Capacity</th></tr></thead><tbody>`;
+                    
+                    txs.forEach(tx => {
+                        html += `<tr>
+                            <td><a href="https://explorer.nervos.org/transaction/${tx.tx_hash}" target="_blank" class="tx-hash">${tx.tx_hash_short}</a></td>
+                            <td class="block-num">#${tx.block_number.toLocaleString()}</td>
+                            <td class="time-ago">${formatTimeAgo(tx.time_ago)}</td>
+                            <td class="capacity">${tx.capacity_formatted}</td>
+                        </tr>`;
+                    });
+                    
+                    html += `</tbody></table></div>`;
+                    content.innerHTML = html;
+                    
+                    const updated = new Date(data.updated_at);
+                    document.getElementById('lastUpdated').textContent = `Last updated: ${updated.toLocaleString()}`;
+                })
+                .catch(err => {
+                    btn.disabled = false;
+                    btn.textContent = '↻ Refresh';
+                    content.innerHTML = `<div class="error">Failed to load transactions</div>`;
+                    console.error(err);
+                });
+        }
+        
+        loadTransactions();
+    </script>
+</body>
+</html>

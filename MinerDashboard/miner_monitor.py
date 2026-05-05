@@ -8,6 +8,7 @@ import json
 import logging
 import time
 import http.client
+from math import sqrt
 from datetime import datetime, timezone
 from flask import Flask, render_template, jsonify, request
 import requests
@@ -48,12 +49,24 @@ def load_config():
             config = json.load(f)
     else:
         config = {"miners": [], "poll_interval": 30}
-    logger.info(f"Loaded config: {len(config.get('miners', []))} miners")
+    # Env var overrides — useful on cloud platforms like Render
+    import os
+    if os.environ.get("WALLET_ADDRESS"):
+        config["wallet"] = os.environ["WALLET_ADDRESS"]
+    if os.environ.get("POLL_INTERVAL"):
+        try:
+            config["poll_interval"] = int(os.environ["POLL_INTERVAL"])
+        except ValueError:
+            pass
+    logger.info(f"Loaded config: {len(config.get('miners', []))} miners, wallet: {config.get('wallet', 'not set')[:10]}...")
 
 
 def save_config():
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=2)
+
+# Initialize config on module load (needed for gunicorn/WSGI)
+load_config()
 
 
 def load_earnings_history():
@@ -336,6 +349,11 @@ _price_cache = None
 _network_hashrate_cache = None
 _network_hashrate_fetch_time = 0
 NETWORK_HASHRATE_CACHE_SECONDS = 3600  # Cache for 1 hour
+
+# Network current cache (for /api/network/current endpoint)
+_network_current_cache = None
+_network_current_fetch_time = 0
+NETWORK_CURRENT_CACHE_SECONDS = 60  # Cache for 1 minute
 
 # Network difficulty cache
 _network_difficulty_cache = None
@@ -635,7 +653,14 @@ def index():
 
 @app.route('/api/status')
 def api_status():
-    """JSON status for all miners."""
+    # Lazy: fetch pool data if not yet loaded (gunicorn doesn't run main())
+    if not pool_data.get("wallet"):
+        wallet = config.get("wallet")
+        if wallet:
+            stats = fetch_pool_stats(wallet)
+            if stats:
+                pool_data.update(stats)
+    
     # Get workers from pool data
     workers = pool_data.get("workers", {})
     
@@ -670,8 +695,8 @@ def api_status():
             "online": data["online"],
             "model": data.get("status", {}).get("model", "Unknown"),
             "firmware": data.get("status", {}).get("firmware", "Unknown"),
-            "current_hashrate": data.get("current_hashrate"),
-            "avg_hashrate": data.get("avg_hashrate"),
+            "current_hashrate": int(data.get("current_hashrate", 0) * 1e6) if data.get("current_hashrate") else 0,
+            "avg_hashrate": int(data.get("avg_hashrate", 0) * 1e6) if data.get("avg_hashrate") else 0,
             "hw_errors": data.get("hw_errors", 0),
             "pools": data.get("pools", []),
             "setting": data.get("setting", {}),
@@ -682,19 +707,40 @@ def api_status():
             "shares_stale": worker_data.get("sharesStale", 0),
             "shares_invalid": worker_data.get("sharesInvalid", 0),
             "worker_offline": worker_data.get("offline", False),
+            "last_beat": worker_data.get("lastBeat"),
             "uptime_seconds": current_uptime
         }
         combined["miners"].append(miner_summary)
         
-        if data["online"]:
-            if data.get("current_hashrate"):
-                total_hashrate += data["current_hashrate"]
-            if data.get("avg_hashrate"):
-                total_avg_hashrate += data["avg_hashrate"]
+        # Use pool workers' hashrate for accurate totals
+    # hr = current hashrate in H/s, hr2 = variance * 1e6 in (MH/s)^2
+    # avg hashrate = sqrt(hr2) * 1e6 H/s
+    workers = pool_data.get("workers", {})
+    total_hashrate = sum(w.get("hr", 0) for w in workers.values())
+    total_avg_hashrate = sum(sqrt(w.get("hr2", 0)) * 1e6 if w.get("hr2") else w.get("hr", 0) for w in workers.values())
     
     combined["total_current_hashrate"] = total_hashrate
     combined["total_avg_hashrate"] = total_avg_hashrate
     combined["pool"] = pool_data
+    
+    # Add network stats for calculator-based daily estimate
+    try:
+        net_resp = requests.get("http://localhost:5000/api/network/current", timeout=5)
+        if net_resp.status_code == 200:
+            net_data = net_resp.json()
+            combined["network_hashrate"] = net_data.get("hash_rate", 0)  # H/s
+            combined["network_diff"] = net_data.get("current_difficulty", 0)  # raw difficulty
+    except:
+        pass
+    
+    # Get block reward from statistics
+    try:
+        stats_resp = requests.get("http://localhost:5000/api/statistics", timeout=5)
+        if stats_resp.status_code == 200:
+            stats_data = stats_resp.json()
+            combined["block_reward"] = stats_data.get("block_reward", 0)  # CKB
+    except:
+        pass
     
     # Calculate combined rejection rate from miner shares
     total_valid = sum(m["shares_valid"] for m in combined["miners"])
@@ -934,11 +980,6 @@ BLOCKS_CACHE_SECONDS = 60  # Cache for 1 minute
 _statistics_cache = None
 _statistics_fetch_time = 0
 STATISTICS_CACHE_SECONDS = 60  # Cache for 1 minute
-
-# Network current cache (separate from statistics cache)
-_network_current_cache = None
-_network_current_fetch_time = 0
-NETWORK_CURRENT_CACHE_SECONDS = 60  # Cache for 1 minute
 
 
 def fetch_ckb_price_history(days=30):
@@ -1377,3 +1418,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
