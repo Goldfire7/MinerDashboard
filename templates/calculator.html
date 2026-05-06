@@ -142,6 +142,17 @@
             margin-top: 4px;
         }
         
+        .input-group .error-msg {
+            font-size: 11px;
+            color: var(--accent-red);
+            margin-top: 4px;
+            display: none;
+        }
+        
+        .input-group input.has-error {
+            border-color: var(--accent-red);
+        }
+        
         .calc-btn {
             width: 100%;
             padding: 14px;
@@ -307,6 +318,68 @@
             font-weight: 500;
         }
         
+        .calc-banner {
+            margin-top: 10px;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .calc-banner.warn {
+            background: rgba(210, 153, 34, 0.15);
+            border: 1px solid rgba(210, 153, 34, 0.4);
+            color: var(--accent-yellow);
+        }
+        
+        .calc-banner.info {
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            color: var(--accent-blue);
+        }
+        
+        .breakdown-disclaimer {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(48, 54, 61, 0.5);
+        }
+        
+        .reset-btn {
+            width: 100%;
+            padding: 10px;
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--accent-blue);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        
+        .reset-btn:hover {
+            background: rgba(88, 166, 255, 0.2);
+            border-color: var(--accent-blue);
+        }
+        
+        .stale-badge {
+            font-size: 10px;
+            background: var(--accent-yellow);
+            color: #000;
+            padding: 1px 6px;
+            border-radius: 6px;
+            margin-left: 6px;
+            font-weight: 600;
+        }
+        
         .loading {
             text-align: center;
             padding: 40px;
@@ -414,6 +487,10 @@
             </div>
             
             <button class="calc-btn" onclick="calculate()">📊 Calculate Earnings</button>
+            
+            <button class="reset-btn" onclick="resetToLive()">🔄 Reset to Live</button>
+            
+            <div id="calcBanner" class="calc-banner" style="display:none"></div>
         </div>
         
         <div class="results-section" id="resultsSection">
@@ -461,13 +538,22 @@
                     <span class="value" id="dailyPowerCost">--</span>
                 </div>
                 <div class="breakdown-row">
+                    <span class="label">Monthly Power Cost</span>
+                    <span class="value" id="monthlyPowerCost">--</span>
+                </div>
+                <div class="breakdown-row">
                     <span class="label">Daily Profit</span>
                     <span class="value" id="dailyProfit">--</span>
                 </div>
+                <div class="breakdown-row">
+                    <span class="label">Monthly Profit</span>
+                    <span class="value" id="monthlyProfit">--</span>
+                </div>
+                <div class="breakdown-disclaimer">📊 Estimates assume constant difficulty and CKB price.</div>
             </div>
             
             <div class="network-stats" id="networkStats">
-                <h4>🌐 Network Stats (Live)</h4>
+                <h4>🌐 Network Stats <span id="staleBadge" style="display:none;font-size:10px;background:var(--accent-yellow);color:#000;padding:1px 6px;border-radius:6px;margin-left:6px;">⚠ Stale</span></h4>
                 <div class="stat-row">
                     <span class="label">Network Hashrate</span>
                     <span class="value" id="liveNetworkHashrate">Loading...</span>
@@ -483,6 +569,9 @@
                 <div class="stat-row">
                     <span class="label">Data Updated</span>
                     <span class="value" id="liveDataUpdated">--</span>
+                </div>
+                <div class="stat-row" style="margin-top:4px;">
+                    <span class="label" style="font-size:10px;color:var(--text-muted);">Based on last 5 blocks · Auto-refreshes every 60s</span>
                 </div>
             </div>
         </div>
@@ -501,41 +590,54 @@
         
         setInterval(() => {
             fetchLiveData().then(() => calculate());
-        }, 30000);
+        }, 60000);  // 60s auto-refresh
+        
+        let lastFetchTime = 0;
+        let userEdited = { networkHashrate: false, ckbPrice: false, blockReward: false };
         
         async function fetchLiveData() {
             try {
                 const statsResp = await fetch('/api/statistics');
+                if (!statsResp.ok) throw new Error('Statistics API error');
                 const stats = await statsResp.json();
+                
+                const statusResp = await fetch('/api/status');
+                if (!statusResp.ok) throw new Error('Status API error');
+                const status = await statusResp.json();
                 
                 liveData.networkHashrate = stats.hash_rate || 0;
                 liveData.blockReward = stats.block_reward || 940;
-                
-                const statusResp = await fetch('/api/status');
-                const status = await statusResp.json();
                 liveData.ckbPrice = status.pool?.ckb_price || 0;
+                
+                lastFetchTime = Date.now();
                 
                 document.getElementById('liveNetworkHashrate').textContent = formatHashrate(liveData.networkHashrate);
                 document.getElementById('liveBlockReward').textContent = liveData.blockReward.toLocaleString() + ' CKB';
                 document.getElementById('liveCKBPrice').textContent = liveData.ckbPrice > 0 ? '$' + liveData.ckbPrice.toFixed(6) : 'N/A';
                 document.getElementById('liveDataUpdated').textContent = new Date().toLocaleTimeString();
+                document.getElementById('staleBadge').style.display = 'none';
                 
+                // Only auto-fill if user hasn't manually edited the field
                 const netHashInput = document.getElementById('networkHashrate');
-                if (liveData.networkHashrate > 0) {
+                if (liveData.networkHashrate > 0 && !userEdited.networkHashrate) {
                     netHashInput.value = (liveData.networkHashrate / 1e12).toFixed(2);
                 }
                 
                 const priceInput = document.getElementById('ckbPrice');
-                if (liveData.ckbPrice > 0) {
+                if (liveData.ckbPrice > 0 && !userEdited.ckbPrice) {
                     priceInput.value = liveData.ckbPrice.toFixed(6);
                 }
                 
                 const blockRewardInput = document.getElementById('blockReward');
-                if (liveData.blockReward > 0) {
+                if (liveData.blockReward > 0 && !userEdited.blockReward) {
                     blockRewardInput.value = liveData.blockReward.toFixed(0);
                 }
             } catch (error) {
                 console.error('Failed to fetch live data:', error);
+                // Show stale badge if data is > 2 min old
+                if (lastFetchTime > 0 && (Date.now() - lastFetchTime) > 120000) {
+                    document.getElementById('staleBadge').style.display = 'inline';
+                }
                 document.getElementById('liveNetworkHashrate').textContent = 'Error';
                 document.getElementById('liveBlockReward').textContent = 'Error';
                 document.getElementById('liveCKBPrice').textContent = 'Error';
@@ -552,16 +654,71 @@
             return h.toFixed(2) + ' H/s';
         }
         
+        function setFieldError(id, msg) {
+            const el = document.getElementById(id);
+            const parent = el.closest('.input-group');
+            el.classList.add('has-error');
+            let err = parent.querySelector('.error-msg');
+            if (!err) {
+                err = document.createElement('div');
+                err.className = 'error-msg';
+                parent.appendChild(err);
+            }
+            err.textContent = msg;
+            err.style.display = 'block';
+        }
+        
+        function clearFieldError(id) {
+            const el = document.getElementById(id);
+            el.classList.remove('has-error');
+            const parent = el.closest('.input-group');
+            const err = parent.querySelector('.error-msg');
+            if (err) err.style.display = 'none';
+        }
+        
         function calculate() {
             const hashrateTH = parseFloat(document.getElementById('hashrate').value) || 0;
             const powerW = parseFloat(document.getElementById('power').value) || 0;
             const electricityCost = parseFloat(document.getElementById('electricityCost').value) || 0;
             const ckbPrice = parseFloat(document.getElementById('ckbPrice').value) || 0;
             const networkHashratePH = parseFloat(document.getElementById('networkHashrate').value) || 0;
-            const blockReward = parseFloat(document.getElementById('blockReward').value) || 940;
+            const blockReward = parseFloat(document.getElementById('blockReward').value) || 0;
             
-            if (!hashrateTH || !networkHashratePH || !ckbPrice) {
+            // Clear previous errors
+            ['hashrate','power','electricityCost','ckbPrice','networkHashrate','blockReward'].forEach(clearFieldError);
+            const banner = document.getElementById('calcBanner');
+            banner.style.display = 'none';
+            
+            // Validation
+            let valid = true;
+            if (!hashrateTH) { setFieldError('hashrate', 'Enter your hashrate'); valid = false; }
+            if (!networkHashratePH) { setFieldError('networkHashrate', 'Enter or wait for network hashrate'); valid = false; }
+            if (!ckbPrice) { setFieldError('ckbPrice', 'Enter or wait for CKB price'); valid = false; }
+            if (powerW < 0) { setFieldError('power', 'Power must be ≥ 0'); valid = false; }
+            if (electricityCost < 0) { setFieldError('electricityCost', 'Cost must be ≥ 0'); valid = false; }
+            if (!valid) {
+                banner.className = 'calc-banner warn';
+                banner.textContent = '⚠️ Please fix the highlighted fields.';
+                banner.style.display = 'flex';
+                // Wipe results
+                ['dailyRevenue','weeklyRevenue','monthlyRevenue','annualRevenue'].forEach(id => {
+                    document.getElementById(id).textContent = '--';
+                });
+                ['dailyCKB','weeklyCKB','monthlyCKB','annualCKB'].forEach(id => {
+                    document.getElementById(id).textContent = '-- CKB';
+                });
                 return;
+            }
+            
+            // Warning if using defaults
+            const missingLive = [];
+            if (!liveData.networkHashrate) missingLive.push('network hashrate');
+            if (!liveData.ckbPrice) missingLive.push('CKB price');
+            if (!liveData.blockReward) missingLive.push('block reward');
+            if (missingLive.length > 0) {
+                banner.className = 'calc-banner info';
+                banner.textContent = 'ℹ️ Using manual values for: ' + missingLive.join(', ');
+                banner.style.display = 'flex';
             }
             
             const yourHashrate = hashrateTH * 1e12;
@@ -573,16 +730,18 @@
             const secondsPerDay = 86400;
             const blocksPerDay = secondsPerDay / avgBlockTimeSec;
             
-            const yourCKBPerDay = networkShare / 100 * blocksPerDay * blockReward;
+            const yourCKBPerDay = networkShare / 100 * blocksPerDay * (blockReward || 940);
             
-            const dailyRevenue = yourCKBPerDay * ckbPrice;
+            const dailyRevenue = yourCKBPerDay * (ckbPrice || 0);
             const weeklyRevenue = dailyRevenue * 7;
             const monthlyRevenue = dailyRevenue * 30;
             const annualRevenue = dailyRevenue * 365;
             
             const kwhPerDay = (powerW * 24) / 1000;
             const dailyPowerCost = kwhPerDay * electricityCost;
+            const monthlyPowerCost = dailyPowerCost * 30;
             const dailyProfit = dailyRevenue - dailyPowerCost;
+            const monthlyProfit = dailyProfit * 30;
             
             document.getElementById('dailyRevenue').textContent = '$' + dailyRevenue.toFixed(2);
             document.getElementById('dailyCKB').textContent = yourCKBPerDay.toFixed(1) + ' CKB';
@@ -593,15 +752,30 @@
             document.getElementById('monthlyRevenue').textContent = '$' + monthlyRevenue.toFixed(2);
             document.getElementById('monthlyCKB').textContent = (yourCKBPerDay * 30).toFixed(1) + ' CKB';
             
-            document.getElementById('annualRevenue').textContent = '$' + annualRevenue.toFixed(0);
+            document.getElementById('annualRevenue').textContent = '$' + annualRevenue.toFixed(2);
             document.getElementById('annualCKB').textContent = (yourCKBPerDay * 365).toFixed(0) + ' CKB';
             
             document.getElementById('networkShare').textContent = networkShare.toFixed(6) + '%';
             document.getElementById('blocksPerDay').textContent = blocksPerDay.toFixed(0) + ' blocks/day';
             document.getElementById('yourCKBPerDay').textContent = yourCKBPerDay.toFixed(1) + ' CKB';
             document.getElementById('dailyPowerCost').textContent = '$' + dailyPowerCost.toFixed(2) + '/day';
+            document.getElementById('monthlyPowerCost').textContent = '$' + monthlyPowerCost.toFixed(2) + '/mo';
             document.getElementById('dailyProfit').textContent = '$' + dailyProfit.toFixed(2) + '/day';
+            document.getElementById('monthlyProfit').textContent = '$' + monthlyProfit.toFixed(2) + '/mo';
         }
+        
+        function resetToLive() {
+            userEdited.networkHashrate = false;
+            userEdited.ckbPrice = false;
+            userEdited.blockReward = false;
+            fetchLiveData().then(() => calculate());
+        }
+        
+        // Track manual edits to avoid overwriting user-set values
+        ['networkHashrate', 'ckbPrice', 'blockReward'].forEach(id => {
+            const input = document.getElementById(id);
+            input.addEventListener('input', () => { userEdited[id] = true; });
+        });
         
         fetchLiveData().then(() => calculate());
     </script>
