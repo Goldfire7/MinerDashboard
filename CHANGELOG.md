@@ -4,6 +4,13 @@ All notable changes to the CKB Miner Dashboard are logged here.
 
 ---
 
+## [Unreleased] - 2026-05-10
+
+### Fixed
+- **TypeError on null shares data** — `2miners /shares/5m` API returns `null` (not `[]`) for `valid`/`stale`/`immature` arrays when data is sparse. Using `get(key, [])` fallback only triggers when key is **missing**, not when value is `null`, causing `len(None)` crashes. Changed to `get(key) or []`.
+
+---
+
 ## [Unreleased] - 2026-04-23
 
 ### Fixed
