@@ -610,15 +610,15 @@ def poll_all_miners():
         if shares:
             pool_data["shares"] = shares
             # Response has valid/stale directly, not under 'shares' key
-            valid_count = len(shares.get('valid', []))
-            stale_count = len(shares.get('stale', []))
+            valid_count = len(shares.get('valid') or [])
+            stale_count = len(shares.get('stale') or [])
             logger.info(f"Pool shares: {valid_count} valid, {stale_count} stale")
     
     # Fetch pool blocks
     blocks = fetch_pool_blocks(wallet)
     if blocks:
         pool_data["blocks"] = blocks
-        logger.info(f"Pool blocks: {blocks.get('candidatesTotal', 0)} candidates, {len(blocks.get('immature', []))} immature")
+        logger.info(f"Pool blocks: {blocks.get('candidatesTotal', 0)} candidates, {len(blocks.get('immature') or [])} immature")
     
     # Fetch pool payments
     if wallet:
