@@ -4,6 +4,18 @@ All notable changes to the CKB Miner Dashboard are logged here.
 
 ---
 
+## [Unreleased] - 2026-05-23
+
+### Changed
+- **Header title styling** — Title now uses `--accent-blue` color, larger font with `clamp(20px, 4vw, 28px)`, pickaxe emoji on both sides (`⛏️ CK-Box Dashboard ⛏️`)
+- **Net/Diff subtitle** — Font size increased to 14px for better readability, Net and Diff info displayed under the title
+- **Header centering** — Title remains perfectly centered at the top of the page via `align-items: center`
+
+### Removed
+- **Orphaned `hashrate_history.json`** — Deleted root-level file (was unused artifact, data lives in `data/hashrate_history.json`)
+
+---
+
 ## [Unreleased] - 2026-05-10
 
 ### Fixed

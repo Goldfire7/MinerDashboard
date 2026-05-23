@@ -61,11 +61,12 @@
         }
         
         .header-title {
-            color: var(--text-primary);
-            font-size: clamp(18px, 3vw, 24px);
+            color: var(--accent-blue);
+            font-size: clamp(20px, 4vw, 28px);
             font-weight: 700;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
         }
         
@@ -144,7 +145,7 @@
         
         .header-center .subtitle {
             color: var(--text-secondary);
-            font-size: 13px;
+            font-size: 14px;
             margin-top: 6px;
             display: flex;
             flex-wrap: wrap;
@@ -1161,11 +1162,13 @@
     <header>
         <div class="header-left"></div>
         <div class="header-center">
-            <div class="header-title">⛏️ CK-Box Dashboard</div>
+            <div class="header-title">⛏️ CK-Box Dashboard ⛏️</div>
             <div class="header-subtitle">
                 <span class="dot" id="statusDot"></span>
-                <span id="headerNetwork">--</span>
-                <span id="headerNetDiff">--</span>
+                <span class="net-info">
+                    <span id="headerNetwork">--</span>
+                    <span id="headerNetDiff">--</span>
+                </span>
             </div>
         </div>
         <div class="header-right">
